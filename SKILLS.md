@@ -88,19 +88,19 @@ A -->|internal| B    Internal: function call within same service
 [[external]]         Double rectangle: external systems (Stripe, DB)
 ```
 
-### Colors (Use Dark Shades for Readability)
+### Colors
 
 | Color | Hex | Meaning |
 |-------|-----|---------|
-| Green | `#2f9e44` | Entry points, success paths |
-| Blue | `#1c7ed6` | Kafka topics, async infrastructure |
-| Red | `#e03131` | Error paths, DLQ, failures |
-| Yellow | `#f08c00` | Warnings: missing consumer, no error handling |
-| Purple | `#9c36b5` | gRPC/sync calls between services |
-| Orange | `#e8590c` | Retry paths, circuit breakers |
-| Gray | `#495057` | External systems |
+| Green | `#37b24d` | Entry points, success paths |
+| Blue | `#4dabf7` | Kafka topics, async infrastructure |
+| Red | `#ff6b6b` | Error paths, DLQ, failures |
+| Yellow | `#ffd43b` | Warnings, highlights, main flow |
+| Purple | `#be4bdb` | gRPC/sync calls between services |
+| Orange | `#fd7e14` | Retry paths, circuit breakers |
+| Gray | `#868e96` | External systems |
 
-**Note**: Use darker shades so text remains readable on colored nodes.
+**Default node background**: Use `#ffd43b` (yellow) for main service nodes to make them stand out.
 
 ### Service Boundaries (MUST Quote Titles)
 
@@ -126,6 +126,41 @@ subgraph ledger [Ledger Service]  ❌ Missing quotes around display name
 subgraph ledger ["Ledger Service"]  ✓
 subgraph payment-svc ["Payment Service"]  ✓
 ```
+
+## ⚠️ CRITICAL: Do NOT Do Broad Text Searches
+
+**NEVER search for keywords across the entire codebase.**
+
+| WRONG | RIGHT |
+|-------|-------|
+| Searching "EOD" across all files → 10k results → context overflow | Find service directory first: `services/eod/` |
+| Grep for "payment" everywhere | Read `services/payment/` directory only |
+
+**If the user asks about "EOD service" or similar:**
+1. Ask for the path: "Which directory contains the EOD service?"
+2. Or locate it: `ls services/` to find `eod/`, `end-of-day/`, etc.
+3. STOP and ask if unclear - don't search broadly
+
+## 📖 PRIORITY: Check Runbooks FIRST
+
+**Before reading any code, find and read runbook/docs files:**
+
+1. Look for these files in the service directory:
+   - `RUNBOOK.md`, `runbook.md`
+   - `README.md`
+   - `docs/architecture.md`, `docs/README.md`
+   - `ARCHITECTURE.md`, `DESIGN.md`
+
+2. **Runbooks contain the answers** - they typically list:
+   - Service dependencies (gRPC, HTTP)
+   - Kafka topics (producer/consumer)
+   - Database connections
+   - Related services
+   - Architecture diagrams
+
+3. **Use runbook info to guide code reading** - only read code files to verify or fill gaps
+
+This saves context and gives accurate dependency information.
 
 ## Instructions
 
