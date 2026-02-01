@@ -225,16 +225,17 @@ When this skill is invoked:
    - If a file, read just that file
    - Identify the programming language from file extensions
    - Look for proto files to understand gRPC service definitions
-   - **Search for communication patterns**:
+   - **In these files, look for communication patterns**:
      - gRPC client imports and calls
      - Kafka producer/consumer setup
      - HTTP client calls
+   - ⚠️ **Only read files in the target directory. Never grep/search the entire codebase.**
    - **Track which services communicate with each other**
 
 4. **MANDATORY: Check documentation and runbooks**:
    - Look for `README.md`, `RUNBOOK.md`, `docs/` in the service directory
    - Look for `architecture.md`, `design.md`, `ADR/` (architecture decision records)
-   - Search for Kafka topic configurations in:
+   - Check for Kafka topic configurations **within the service directory**:
      - `config/`, `configs/`, `configuration/`
      - `*.yaml`, `*.yml`, `*.json` config files
      - Environment variable definitions

@@ -6,6 +6,17 @@ Generate a service flow diagram showing **both sync (gRPC/HTTP) and async (Kafka
 
 ## ⚠️ CRITICAL REQUIREMENTS
 
+### 🛑 NO BROAD SEARCHES
+
+**NEVER grep or search the entire codebase for keywords.**
+
+If the user asks for a diagram of "EOD service" or similar:
+1. Ask for the directory path, OR
+2. Check runbooks (`runbooks/`, `docs/`) for the path, OR
+3. Use `ls services/` to find the directory name
+
+**Only read files within the target service directory.** Broad searches cause context overflow.
+
 ### No Single-Service Diagrams
 
 **NEVER generate a diagram with only one service.**
@@ -70,11 +81,13 @@ This diagram will be used for:
    - ledger/tests/        → Tests (SKIP)
    ```
 4. **Read the main service files**, not jobs/utilities/tests
-5. **Search for ALL communication patterns** across all files:
+5. **Within the target directory**, look for communication patterns:
    - gRPC client calls → which services does this call?
    - Kafka producers → which topics does this publish to?
    - Kafka consumers → which topics does this consume from?
    - HTTP clients → which services does this call?
+
+   ⚠️ **DO NOT search/grep across the entire codebase. Only read files in the target directory.**
 
 **Files to PRIORITIZE:**
 - `main.go`, `app.py` - entry points
