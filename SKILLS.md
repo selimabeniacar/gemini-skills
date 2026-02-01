@@ -2,6 +2,30 @@
 
 Generate flow diagrams for debugging, incident investigation, and onboarding.
 
+---
+
+## 🛑 STOP - READ THIS FIRST
+
+**NEVER USE GREP/SEARCH TO FIND SERVICES.**
+
+If user says "draw EOD service" or similar:
+1. **CHECK RUNBOOKS FIRST**: Look for `runbooks/`, `docs/`, `RUNBOOK.md` files - they list services and paths
+2. **OR use `ls`**: `ls services/` or `ls cmd/` to find the directory name
+3. **OR ASK**: "What is the path to the EOD service directory?"
+4. **NEVER**: `grep -r "EOD"` or search for keywords across codebase
+
+**Finding service via runbooks:**
+```
+ls runbooks/          → find eod.md, end-of-day.md
+cat runbooks/eod.md   → find "Repository: services/eod" or similar
+```
+
+Searching keywords = 10,000+ matches = context overflow = failure.
+
+**You MUST have a specific directory path before proceeding.**
+
+---
+
 ## Description
 
 Creates Mermaid diagrams to visualize code execution and service communication. Supports three modes:
