@@ -8,42 +8,42 @@ This example shows a typical order processing flow with both gRPC (sync) and Kaf
 
 ```mermaid
 flowchart LR
-    subgraph Client [Client]
+    subgraph client ["Client"]
         C1[Mobile App]
     end
 
-    subgraph APIGateway [API Gateway]
+    subgraph api-gateway ["API Gateway"]
         GW[Gateway]
     end
 
-    subgraph OrderService [Order Service]
+    subgraph order-service ["Order Service"]
         O1[OrderHandler]
         O2[OrderProcessor]
         O3[KafkaPublisher]
     end
 
-    subgraph PaymentService [Payment Service]
+    subgraph payment-service ["Payment Service"]
         P1[gRPC Server]
         P2[PaymentProcessor]
     end
 
-    subgraph InventoryService [Inventory Service]
+    subgraph inventory-service ["Inventory Service"]
         I1([inventory-consumer])
         I2[StockManager]
     end
 
-    subgraph NotificationService [Notification Service]
+    subgraph notification-service ["Notification Service"]
         N1([notification-consumer])
         N2[EmailSender]
     end
 
-    subgraph Kafka [Kafka]
+    subgraph kafka ["Kafka"]
         T1[(order.created)]
         T2[(order.completed)]
         DLQ[(order.created.dlq)]
     end
 
-    subgraph External [External Systems]
+    subgraph external ["External Systems"]
         DB[[PostgreSQL]]
         STRIPE[[Stripe API]]
         SES[[AWS SES]]
@@ -74,13 +74,13 @@ flowchart LR
     N1 --> N2
 
     %% Styling
-    style GW fill:#69db7c
-    style T1 fill:#4dabf7
-    style T2 fill:#4dabf7
-    style DLQ fill:#ff6b6b
-    style DB fill:#868e96
-    style STRIPE fill:#868e96
-    style SES fill:#868e96
+    style GW fill:#2f9e44
+    style T1 fill:#1c7ed6
+    style T2 fill:#1c7ed6
+    style DLQ fill:#e03131
+    style DB fill:#495057
+    style STRIPE fill:#495057
+    style SES fill:#495057
 ```
 
 **Legend:**
@@ -124,22 +124,22 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    subgraph OrderService [Order Service]
+    subgraph order-service ["Order Service"]
         O1[OrderHandler]
         O2[Publisher]
     end
 
-    subgraph Kafka [Kafka]
+    subgraph kafka ["Kafka"]
         T1[(order.created<br/>lag: 50,000)]
         DLQ[(order.dlq<br/>depth: 12,847)]
     end
 
-    subgraph NotificationService [Notification Service]
+    subgraph notification-service ["Notification Service"]
         N1([email-consumer<br/>1 instance])
         N2[EmailSender]
     end
 
-    subgraph External [External]
+    subgraph external ["External"]
         SES[[AWS SES<br/>rate limited]]
     end
 
@@ -150,10 +150,10 @@ flowchart LR
     N2 ==>|HTTPS| SES
     N1 -.->|failures| DLQ
 
-    style T1 fill:#ff6b6b
-    style DLQ fill:#ff6b6b
-    style N1 fill:#ffd43b
-    style SES fill:#ff6b6b
+    style T1 fill:#e03131
+    style DLQ fill:#e03131
+    style N1 fill:#f08c00
+    style SES fill:#e03131
 ```
 
 **Legend:**
@@ -203,40 +203,40 @@ This example shows a system where most communication is sync gRPC.
 
 ```mermaid
 flowchart TD
-    subgraph Gateway [API Gateway]
+    subgraph gateway ["API Gateway"]
         GW[GraphQL Gateway]
     end
 
-    subgraph UserService [User Service - gRPC]
+    subgraph user-service ["User Service - gRPC"]
         U1[GetUser]
         U2[UpdateUser]
     end
 
-    subgraph ProductService [Product Service - gRPC]
+    subgraph product-service ["Product Service - gRPC"]
         PR1[GetProduct]
         PR2[ListProducts]
     end
 
-    subgraph CartService [Cart Service - gRPC]
+    subgraph cart-service ["Cart Service - gRPC"]
         CA1[GetCart]
         CA2[AddToCart]
     end
 
-    subgraph PricingService [Pricing Service - gRPC]
+    subgraph pricing-service ["Pricing Service - gRPC"]
         PI1[CalculatePrice]
     end
 
-    subgraph InventoryService [Inventory Service - gRPC]
+    subgraph inventory-service ["Inventory Service - gRPC"]
         IN1[CheckStock]
         IN2[ReserveStock]
     end
 
-    subgraph Kafka [Async Events]
+    subgraph kafka ["Async Events"]
         T1[(cart.updated)]
         T2[(inventory.low)]
     end
 
-    subgraph Analytics [Analytics Service]
+    subgraph analytics ["Analytics Service"]
         A1([analytics-consumer])
     end
 
@@ -256,10 +256,10 @@ flowchart TD
     T2 -.->|consume| A1
 
     %% Styling
-    style GW fill:#69db7c
-    style T1 fill:#4dabf7
-    style T2 fill:#4dabf7
-    linkStyle 0,1,2,3,4,5,6 stroke:#be4bdb,stroke-width:2px
+    style GW fill:#2f9e44
+    style T1 fill:#1c7ed6
+    style T2 fill:#1c7ed6
+    linkStyle 0,1,2,3,4,5,6 stroke:#9c36b5,stroke-width:2px
 ```
 
 **Legend:**
@@ -294,26 +294,26 @@ Gateway -> CartService -> ProductService -> (response)
 
 ```mermaid
 flowchart LR
-    subgraph CheckoutService [Checkout Orchestrator]
+    subgraph checkout-service ["Checkout Orchestrator"]
         C1[SagaCoordinator]
     end
 
-    subgraph PaymentService [Payment Service]
+    subgraph payment-service ["Payment Service"]
         P1[ChargeCard]
         P2[RefundCard]
     end
 
-    subgraph InventoryService [Inventory Service]
+    subgraph inventory-service ["Inventory Service"]
         I1[ReserveStock]
         I2[ReleaseStock]
     end
 
-    subgraph ShippingService [Shipping Service]
+    subgraph shipping-service ["Shipping Service"]
         S1[CreateShipment]
         S2[CancelShipment]
     end
 
-    subgraph Kafka [Saga Events]
+    subgraph kafka ["Saga Events"]
         T1[(saga.payment.request)]
         T2[(saga.payment.completed)]
         T3[(saga.payment.failed)]
@@ -349,14 +349,14 @@ flowchart LR
     T8 -.-> S2
 
     %% Styling
-    style C1 fill:#69db7c
-    style T1 fill:#4dabf7
-    style T2 fill:#69db7c
-    style T3 fill:#ff6b6b
-    style T4 fill:#4dabf7
-    style T5 fill:#69db7c
-    style T6 fill:#ff6b6b
-    style T8 fill:#fd7e14
+    style C1 fill:#2f9e44
+    style T1 fill:#1c7ed6
+    style T2 fill:#2f9e44
+    style T3 fill:#e03131
+    style T4 fill:#1c7ed6
+    style T5 fill:#2f9e44
+    style T6 fill:#e03131
+    style T8 fill:#e8590c
 ```
 
 **Legend:**
@@ -386,22 +386,22 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    subgraph OrderService [Order Service]
+    subgraph order-service ["Order Service"]
         O1[HTTP Handler]
         O2[Business Logic]
         O3[Kafka Publisher]
     end
 
-    subgraph PaymentService [Payment Service]
+    subgraph payment-service ["Payment Service"]
         P1[gRPC Server]
         P2[Payment Logic]
     end
 
-    subgraph Kafka [Message Bus]
+    subgraph kafka ["Message Bus"]
         T1[(order.events)]
     end
 
-    subgraph External [External]
+    subgraph external ["External"]
         DB[[Database]]
     end
 
@@ -417,9 +417,9 @@ flowchart LR
     O1 --> O2 --> O3
     P1 --> P2
 
-    style O1 fill:#69db7c
-    style T1 fill:#4dabf7
-    style DB fill:#868e96
+    style O1 fill:#2f9e44
+    style T1 fill:#1c7ed6
+    style DB fill:#495057
 ```
 
 ---

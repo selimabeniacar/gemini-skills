@@ -88,25 +88,43 @@ A -->|internal| B    Internal: function call within same service
 [[external]]         Double rectangle: external systems (Stripe, DB)
 ```
 
-### Colors
+### Colors (Use Dark Shades for Readability)
 
 | Color | Hex | Meaning |
 |-------|-----|---------|
-| Green | `#69db7c` | Entry points, success paths |
-| Blue | `#4dabf7` | Kafka topics, async infrastructure |
-| Red | `#ff6b6b` | Error paths, DLQ, failures |
-| Yellow | `#ffd43b` | Warnings: missing consumer, no error handling |
-| Purple | `#be4bdb` | gRPC/sync calls between services |
-| Orange | `#fd7e14` | Retry paths, circuit breakers |
-| Gray | `#868e96` | External systems |
+| Green | `#2f9e44` | Entry points, success paths |
+| Blue | `#1c7ed6` | Kafka topics, async infrastructure |
+| Red | `#e03131` | Error paths, DLQ, failures |
+| Yellow | `#f08c00` | Warnings: missing consumer, no error handling |
+| Purple | `#9c36b5` | gRPC/sync calls between services |
+| Orange | `#e8590c` | Retry paths, circuit breakers |
+| Gray | `#495057` | External systems |
 
-### Service Boundaries
+**Note**: Use darker shades so text remains readable on colored nodes.
 
-Always use subgraphs to show service boundaries:
-```
-subgraph ServiceName [Service Name]
-    components...
+### Service Boundaries (MUST Quote Titles)
+
+Always use subgraphs with **quoted titles** to avoid syntax errors:
+```mermaid
+subgraph ledger ["Ledger Service"]
+    L1[Handler]
 end
+
+subgraph payment ["Payment Service"]
+    P1[Processor]
+end
+```
+
+**WRONG** (causes syntax errors):
+```
+subgraph Ledger Service    ❌ Missing quotes
+subgraph ledger [Ledger Service]  ❌ Missing quotes around display name
+```
+
+**CORRECT**:
+```
+subgraph ledger ["Ledger Service"]  ✓
+subgraph payment-svc ["Payment Service"]  ✓
 ```
 
 ## Instructions
@@ -123,13 +141,89 @@ When this skill is invoked:
    - The output path (default: `/tmp/flow-<timestamp>.md`)
    - Whether verbose mode is enabled
 
-2. **Read the target files**:
+2. **MANDATORY: Explore the directory structure FIRST** (before reading any code):
+   - List ALL subdirectories and files in the target path
+   - Identify the directory structure pattern (monorepo, service-per-folder, etc.)
+   - **Report what you found** to the user before proceeding:
+     ```
+     Found directory structure:
+     - services/ledger/api/          (main API handlers)
+     - services/ledger/consumer/     (Kafka consumers)
+     - services/ledger/client/       (gRPC client)
+     - services/ledger/jobs/         (background jobs - will deprioritize)
+     - services/ledger/proto/        (gRPC definitions)
+     ```
+   - **Prioritize main service code** over:
+     - Jobs, cron tasks, migrations (deprioritize)
+     - Test files (skip)
+     - Mocks, fixtures (skip)
+     - Disaster recovery scripts (deprioritize)
+   - **For `--type=service`**: Also look for neighboring services that communicate with this one
+
+3. **Read the target files systematically**:
+   - **Read ALL relevant files**, not just one
    - If a directory, read all `.go`, `.py`, and `.proto` files
    - If a file, read just that file
    - Identify the programming language from file extensions
    - Look for proto files to understand gRPC service definitions
+   - **Search for communication patterns**:
+     - gRPC client imports and calls
+     - Kafka producer/consumer setup
+     - HTTP client calls
+   - **Track which services communicate with each other**
 
-3. **Generate the appropriate diagram** based on type:
+4. **MANDATORY: Check documentation and runbooks**:
+   - Look for `README.md`, `RUNBOOK.md`, `docs/` in the service directory
+   - Look for `architecture.md`, `design.md`, `ADR/` (architecture decision records)
+   - Search for Kafka topic configurations in:
+     - `config/`, `configs/`, `configuration/`
+     - `*.yaml`, `*.yml`, `*.json` config files
+     - Environment variable definitions
+   - **Extract from runbooks**:
+     - Service dependencies mentioned
+     - Kafka topics (producer/consumer)
+     - gRPC/HTTP endpoints called
+     - Database dependencies
+   - **Cross-reference code with documentation** to ensure nothing is missed
+
+5. **BE THOROUGH - Do not skip dependencies**:
+
+   ⚠️ **IMPORTANT: Take your time. Do not rush. Do not skip.**
+
+   Before generating the diagram, you MUST have identified:
+   - [ ] ALL gRPC services this service calls (check client code)
+   - [ ] ALL gRPC services that call this service (check proto definitions)
+   - [ ] ALL Kafka topics this service publishes to
+   - [ ] ALL Kafka topics this service consumes from
+   - [ ] ALL HTTP/REST endpoints this service calls
+   - [ ] ALL databases this service connects to
+   - [ ] ALL caches (Redis, Memcached) this service uses
+   - [ ] ALL third-party APIs (Stripe, AWS, etc.)
+
+   **If you are unsure about a dependency, include it with a note.**
+   **It is better to include too much than to miss something.**
+
+   Report your findings:
+   ```
+   Dependencies found for Ledger Service:
+
+   SYNC (gRPC/HTTP):
+   - → PaymentService.ProcessPayment (grpc) [from client/payment_client.go:45]
+   - → InventoryService.Reserve (grpc) [from client/inventory_client.go:23]
+   - → PostgreSQL [from repository/ledger_repo.go:12]
+
+   ASYNC (Kafka):
+   - PRODUCES: ledger.transaction.created [from producer/transaction_producer.go:34]
+   - PRODUCES: ledger.balance.updated [from producer/balance_producer.go:18]
+   - CONSUMES: order.completed [from consumer/order_consumer.go:27]
+   - CONSUMES: payment.refunded [from consumer/refund_consumer.go:15]
+
+   FROM RUNBOOK (docs/RUNBOOK.md):
+   - Also depends on: AuditService for compliance logging
+   - Also consumes: compliance.check.required (not found in code - verify)
+   ```
+
+6. **Generate the appropriate diagram** based on type:
 
 ### For Call Graphs (`--type=call`)
 
@@ -151,15 +245,23 @@ Follow the instructions in `prompts/control-flow.md`:
 
 ### For Service Flows (`--type=service`)
 
+⚠️ **NEVER generate a single-service diagram. Service flow MUST show:**
+- The target service AND all services it communicates with
+- Minimum 2 services in the diagram (target + at least one dependency)
+- If no dependencies found, something is wrong - investigate further
+
 Follow the instructions in `prompts/service-flow.md`:
+- **Include ALL services found in step 2**, not just one
+- **Include neighboring services**: Any service this one calls or is called by
 - **Identify sync communication**: gRPC clients, HTTP clients, REST calls
 - **Identify async communication**: Kafka producers/consumers, message queues
 - **Map service boundaries**: Which code belongs to which service
 - **Use correct arrow styles**: `==>` for sync, `-.->` for async (THIS IS CRITICAL)
 - **Show failure modes**: Timeouts, DLQs, retries, circuit breakers
 - **Highlight issues**: Missing error handling, single points of failure
+- **Show neighboring services**: Any service that this service calls or is called by
 
-4. **Write the output file**:
+7. **Write the output file**:
    - Generate a filename using the format `/tmp/flow-<timestamp>.md` (e.g., `/tmp/flow-20240115-143022.md`)
    - Or use the path specified by `--output`
    - **Always include the legend** showing sync vs async distinction
@@ -167,13 +269,13 @@ Follow the instructions in `prompts/service-flow.md`:
    - Include analysis notes after the diagram
    - Tell the user the output file path so they can open it
 
-5. **Add analysis notes** in the output file explaining:
+8. **Add analysis notes** in the output file explaining:
    - Key observations about the flow
    - Potential issues or areas of concern
    - **For incidents**: What to check based on sync vs async paths
    - Suggestions for debugging if applicable
 
-6. **If `--verbose` is enabled**, add educational content for onboarding:
+9. **If `--verbose` is enabled**, add educational content for onboarding:
 
 ### Verbose Mode Content
 

@@ -112,9 +112,9 @@ Add line number references in node labels or as notes:
 ### 7. Highlight Issues
 
 Use styling to mark:
-- **Error paths** (red): `style NODE fill:#ff6b6b`
-- **Happy path** (green): `style NODE fill:#69db7c`
-- **Suspicious branches** (yellow): `style NODE fill:#ffd43b`
+- **Error paths** (red): `style NODE fill:#e03131`
+- **Happy path** (green): `style NODE fill:#2f9e44`
+- **Suspicious branches** (yellow): `style NODE fill:#f08c00`
 
 Flag:
 - Missing error handling
@@ -132,8 +132,8 @@ flowchart TD
     C --> E[Return success<br/>Line 50]
     D --> F[Return error<br/>Line 52]
 
-    style E fill:#69db7c
-    style F fill:#ff6b6b
+    style E fill:#2f9e44
+    style F fill:#e03131
 ```
 
 After the diagram, include:
@@ -146,10 +146,10 @@ After the diagram, include:
 
 | Color | Hex | Use For |
 |-------|-----|---------|
-| Green | `#69db7c` | Entry point, success returns, happy path |
-| Red | `#ff6b6b` | Error returns, exception paths |
-| Yellow | `#ffd43b` | Warnings: missing error handling, suspicious logic |
-| Blue | `#4dabf7` | External calls within the function |
+| Green | `#2f9e44` | Entry point, success returns, happy path |
+| Red | `#e03131` | Error returns, exception paths |
+| Yellow | `#f08c00` | Warnings: missing error handling, suspicious logic |
+| Blue | `#1c7ed6` | External calls within the function |
 
 ## Node Shape Reference
 

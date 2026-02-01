@@ -60,13 +60,13 @@ flowchart TD
     M -->|Yes| N[Return Error:<br/>save failed]
     M -->|No| O[Return nil<br/>Line 50]
 
-    style A fill:#69db7c
-    style O fill:#69db7c
-    style C fill:#ff6b6b
-    style F fill:#ff6b6b
-    style H fill:#ff6b6b
-    style K fill:#ff6b6b
-    style N fill:#ffd43b
+    style A fill:#2f9e44
+    style O fill:#2f9e44
+    style C fill:#e03131
+    style F fill:#e03131
+    style H fill:#e03131
+    style K fill:#e03131
+    style N fill:#f08c00
 ```
 
 **Analysis**:
@@ -154,13 +154,13 @@ flowchart TD
     P --> Q[Log error]
     Q --> R[Raise ServerError:<br/>Save failed]
 
-    style A fill:#69db7c
-    style M fill:#69db7c
-    style C fill:#ff6b6b
-    style F fill:#ff6b6b
-    style J fill:#ff6b6b
-    style O fill:#ff6b6b
-    style R fill:#ffd43b
+    style A fill:#2f9e44
+    style M fill:#2f9e44
+    style C fill:#e03131
+    style F fill:#e03131
+    style J fill:#e03131
+    style O fill:#e03131
+    style R fill:#f08c00
 ```
 
 **Analysis**:
@@ -195,9 +195,9 @@ flowchart TD
     E --> J
     H --> J
 
-    style A fill:#69db7c
-    style G fill:#ffd43b
-    style I fill:#ff6b6b
+    style A fill:#2f9e44
+    style G fill:#f08c00
+    style I fill:#e03131
 ```
 
 **Analysis**:

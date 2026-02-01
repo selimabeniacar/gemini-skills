@@ -38,22 +38,22 @@ func ChargeCustomer(customer *Customer, amount float64) error {
 
 ```mermaid
 flowchart TD
-    subgraph entry [Entry Point]
+    subgraph entry ["Entry Point"]
         A[payments.ProcessOrder]
     end
 
-    subgraph validation [Validation]
+    subgraph validation ["Validation"]
         B[payments.ValidateOrder]
         C[validator.Validate]
     end
 
-    subgraph charging [Payment Processing]
+    subgraph charging ["Payment Processing"]
         D[payments.ChargeCustomer]
         E[Customer.GetPaymentMethod]
         F[stripe.CreateCharge]
     end
 
-    subgraph persistence [Data Layer]
+    subgraph persistence ["Data Layer"]
         G[db.SaveTransaction]
     end
 
@@ -64,10 +64,10 @@ flowchart TD
     D --> F
     D --> G
 
-    style A fill:#69db7c
-    style C fill:#4dabf7
-    style F fill:#4dabf7
-    style G fill:#4dabf7
+    style A fill:#2f9e44
+    style C fill:#1c7ed6
+    style F fill:#1c7ed6
+    style G fill:#1c7ed6
 ```
 
 **Analysis**:
@@ -103,24 +103,24 @@ async def process_data(user, data):
 
 ```mermaid
 flowchart TD
-    subgraph handlers [Request Handlers]
+    subgraph handlers ["Request Handlers"]
         A[handle_user_request]
     end
 
-    subgraph auth [Authentication]
+    subgraph auth ["Authentication"]
         B[authenticate]
         C[extract_token]
         D[auth_service.verify]
     end
 
-    subgraph processing [Data Processing]
+    subgraph processing ["Data Processing"]
         E[validate_input]
         F[process_data]
         G[fetch_user_context]
         H[transformer.apply]
     end
 
-    subgraph response [Response]
+    subgraph response ["Response"]
         I[format_response]
     end
 
@@ -133,10 +133,10 @@ flowchart TD
     F --> G
     F --> H
 
-    style A fill:#69db7c
-    style D fill:#4dabf7
-    style H fill:#4dabf7
-    style E fill:#ffd43b
+    style A fill:#2f9e44
+    style D fill:#1c7ed6
+    style H fill:#1c7ed6
+    style E fill:#f08c00
 ```
 
 **Analysis**:
@@ -172,12 +172,12 @@ flowchart TD
     H --> L[db.UpdateJob]
     I --> M[notifier.Send]
 
-    style A fill:#69db7c
-    style D fill:#be4bdb
-    style E fill:#be4bdb
-    style F fill:#4dabf7
-    style L fill:#4dabf7
-    style M fill:#4dabf7
+    style A fill:#2f9e44
+    style D fill:#9c36b5
+    style E fill:#9c36b5
+    style F fill:#1c7ed6
+    style L fill:#1c7ed6
+    style M fill:#1c7ed6
 ```
 
 **Legend**:
@@ -201,22 +201,22 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    subgraph entry [Entry Point]
+    subgraph entry ["Entry Point"]
         A[payments.ProcessOrder]
     end
 
-    subgraph validation [Validation]
+    subgraph validation ["Validation"]
         B[payments.ValidateOrder]
         C[validator.Validate]
     end
 
-    subgraph charging [Payment Processing]
+    subgraph charging ["Payment Processing"]
         D[payments.ChargeCustomer]
         E[Customer.GetPaymentMethod]
         F[stripe.CreateCharge]
     end
 
-    subgraph persistence [Data Layer]
+    subgraph persistence ["Data Layer"]
         G[db.SaveTransaction]
     end
 
@@ -227,10 +227,10 @@ flowchart TD
     D --> F
     D --> G
 
-    style A fill:#69db7c
-    style C fill:#4dabf7
-    style F fill:#4dabf7
-    style G fill:#4dabf7
+    style A fill:#2f9e44
+    style C fill:#1c7ed6
+    style F fill:#1c7ed6
+    style G fill:#1c7ed6
 ```
 
 ---
@@ -249,11 +249,11 @@ flowchart TD
 ### Colors
 | Color | Meaning |
 |-------|---------|
-| 🟢 Green (`#69db7c`) | Entry points - where execution begins |
-| 🔵 Blue (`#4dabf7`) | External calls - calls to other packages or services |
-| 🟡 Yellow (`#ffd43b`) | Warnings - potential issues or missing error handling |
-| 🔴 Red (`#ff6b6b`) | Error paths - error returns or failure branches |
-| 🟣 Purple (`#be4bdb`) | Goroutines - concurrent execution (Go specific) |
+| 🟢 Green (`#2f9e44`) | Entry points - where execution begins |
+| 🔵 Blue (`#1c7ed6`) | External calls - calls to other packages or services |
+| 🟡 Yellow (`#f08c00`) | Warnings - potential issues or missing error handling |
+| 🔴 Red (`#e03131`) | Error paths - error returns or failure branches |
+| 🟣 Purple (`#9c36b5`) | Goroutines - concurrent execution (Go specific) |
 
 ### Subgraphs
 Grouped boxes (subgraphs) show logical layers or related functionality. In this diagram:

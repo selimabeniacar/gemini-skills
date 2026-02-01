@@ -4,6 +4,40 @@
 
 Generate a service flow diagram showing **both sync (gRPC/HTTP) and async (Kafka/queues)** communication between services. The distinction between sync and async is **critical** for incident investigation and onboarding.
 
+## ⚠️ CRITICAL REQUIREMENTS
+
+### No Single-Service Diagrams
+
+**NEVER generate a diagram with only one service.**
+
+Service flow mode MUST show:
+- The target service AND all services it communicates with
+- Minimum 2+ services (target + dependencies)
+- Kafka topics as intermediaries between services
+- External systems (databases, third-party APIs)
+
+If you only found one service, you have NOT finished investigating. Keep looking for:
+- gRPC/HTTP clients (outbound calls)
+- Kafka producers/consumers (async communication)
+- Database connections
+- Config files mentioning other services
+
+### Thoroughness Requirement
+
+**Take your time. Be methodical. Do not skip dependencies.**
+
+This diagram will be used for:
+- **Incident investigation** - missing a dependency could mean missing the root cause
+- **Onboarding** - new engineers need the complete picture
+
+**You MUST check ALL sources:**
+1. Source code (*.go, *.py, *.proto)
+2. Configuration files (*.yaml, *.yml, *.json)
+3. Documentation (README.md, RUNBOOK.md, docs/)
+4. Environment variables and secrets references
+
+**If unsure, include it with a note rather than skip it.**
+
 ## CRITICAL: Arrow Style Rules
 
 **You MUST use the correct arrow style. This is non-negotiable.**
@@ -17,6 +51,43 @@ Generate a service flow diagram showing **both sync (gRPC/HTTP) and async (Kafka
 **Why this matters:**
 - Sync: Caller is BLOCKED waiting for response. Timeout = immediate failure.
 - Async: Caller continues immediately. Failure is delayed, shows up as lag or DLQ.
+
+## CRITICAL: Read ALL Files First
+
+**DO NOT cherry-pick one file and generate a diagram. You MUST:**
+
+1. **List the entire directory structure** first
+2. **Identify ALL services/components** in the directory
+3. **Report what you found** before generating anything:
+   ```
+   Directory scan results:
+   - ledger/api/          → Main API handlers (INCLUDE)
+   - ledger/consumer/     → Kafka consumers (INCLUDE)
+   - ledger/producer/     → Kafka producers (INCLUDE)
+   - ledger/grpc/         → gRPC server/client (INCLUDE)
+   - ledger/jobs/         → Background jobs (DEPRIORITIZE - not main flow)
+   - ledger/migrations/   → DB migrations (SKIP)
+   - ledger/tests/        → Tests (SKIP)
+   ```
+4. **Read the main service files**, not jobs/utilities/tests
+5. **Search for ALL communication patterns** across all files:
+   - gRPC client calls → which services does this call?
+   - Kafka producers → which topics does this publish to?
+   - Kafka consumers → which topics does this consume from?
+   - HTTP clients → which services does this call?
+
+**Files to PRIORITIZE:**
+- `main.go`, `app.py` - entry points
+- `*_handler.go`, `*_server.go` - API handlers
+- `*_client.go` - gRPC/HTTP clients (shows outbound calls)
+- `*_consumer.go`, `*_producer.go` - Kafka integration
+- `*.proto` - gRPC service definitions
+
+**Files to SKIP:**
+- `*_test.go`, `test_*.py` - tests
+- `*_mock.go`, `mock_*.py` - mocks
+- `migrations/` - database migrations
+- `fixtures/` - test data
 
 ## Steps
 
@@ -110,34 +181,109 @@ Mark external dependencies distinctly:
 - Databases: PostgreSQL, MySQL, MongoDB
 - Caches: Redis, Memcached
 - Third-party APIs: Stripe, Twilio, AWS services
-- Object storage: S3, GCS
 
-### 5. Generate Mermaid Diagram
+### 5. Identify Neighboring Services
+
+**This is critical for architectural diagrams.** Look for:
+
+#### From gRPC clients:
+```go
+// This tells you the service calls "payment-service"
+client := pb.NewPaymentServiceClient(conn)
+```
+
+#### From Kafka topics:
+```go
+// Publishing to "order.created" - who consumes this?
+producer.SendMessage(&sarama.ProducerMessage{Topic: "order.created"})
+
+// Consuming from "payment.completed" - who produces this?
+consumer.Subscribe("payment.completed")
+```
+
+#### From HTTP clients:
+```go
+// This tells you the service calls "inventory-service"
+resp, err := http.Get("http://inventory-service/api/stock")
+```
+
+#### From proto imports:
+```protobuf
+import "payment/payment.proto";  // Depends on payment service
+```
+
+**Build a communication map:**
+```
+Ledger Service:
+  CALLS (sync):
+    - PaymentService.ProcessPayment (gRPC)
+    - InventoryService.CheckStock (HTTP)
+  PUBLISHES (async):
+    - ledger.transaction.created
+    - ledger.balance.updated
+  CONSUMES (async):
+    - order.completed
+    - payment.refunded
+```
+
+Include ALL these services in the diagram, even if they're not in the current directory.
+
+### 6. Check Runbooks and Documentation
+
+**MANDATORY: Do not skip this step.**
+
+Look for and read these files:
+- `README.md` - service overview, dependencies
+- `RUNBOOK.md` - operational info, dependencies, topics
+- `docs/*.md` - architecture docs
+- `docs/architecture.md` - system design
+- `config/*.yaml` - Kafka topics, service URLs
+- `.env.example` - environment variables showing dependencies
+
+**Extract from documentation:**
+```
+From RUNBOOK.md:
+- "This service publishes to ledger.audit.events"
+- "Depends on PaymentService for refund processing"
+- "Consumes from compliance.check.required topic"
+
+From config/kafka.yaml:
+- topics:
+    - ledger.transaction.created
+    - ledger.balance.updated
+```
+
+**Cross-reference code with docs** - if docs mention a dependency not in code:
+- Include it in the diagram with a note: `[from runbook - verify]`
+
+### 7. Generate Mermaid Diagram
+
+**CRITICAL: Always quote subgraph display names to avoid syntax errors.**
 
 ```mermaid
 flowchart LR
-    subgraph APIGateway [API Gateway]
+    subgraph api-gateway ["API Gateway"]
         GW[Gateway Handler]
     end
 
-    subgraph OrderService [Order Service]
+    subgraph order-service ["Order Service"]
         O1[OrderHandler]
         O2[OrderProcessor]
         O3[KafkaPublisher]
     end
 
-    subgraph PaymentService [Payment Service]
+    subgraph payment-service ["Payment Service"]
         P1[gRPC Server]
         P2[PaymentProcessor]
         P3([kafka-consumer])
     end
 
-    subgraph Kafka [Message Bus]
+    subgraph kafka ["Kafka Topics"]
         T1[(order.created)]
         T2[(payment.completed)]
     end
 
-    subgraph External [External Systems]
+    subgraph external ["External Systems"]
         DB1[[PostgreSQL]]
         STRIPE[[Stripe API]]
     end
@@ -161,11 +307,11 @@ flowchart LR
     P1 --> P2
 
     %% Styling
-    style GW fill:#69db7c
-    style T1 fill:#4dabf7
-    style T2 fill:#4dabf7
-    style DB1 fill:#868e96
-    style STRIPE fill:#868e96
+    style GW fill:#2f9e44
+    style T1 fill:#1c7ed6
+    style T2 fill:#1c7ed6
+    style DB1 fill:#495057
+    style STRIPE fill:#495057
 ```
 
 ### 6. Visual Convention Checklist
@@ -185,12 +331,12 @@ flowchart LR
 - [ ] `[[name]]` double rectangles for external systems
 
 **Colors:**
-- [ ] Green `#69db7c` for entry points
-- [ ] Blue `#4dabf7` for Kafka topics
-- [ ] Purple `#be4bdb` for gRPC endpoints (optional)
-- [ ] Gray `#868e96` for external systems
-- [ ] Red `#ff6b6b` for DLQ/error paths
-- [ ] Yellow `#ffd43b` for warnings
+- [ ] Green `#2f9e44` for entry points
+- [ ] Blue `#1c7ed6` for Kafka topics
+- [ ] Purple `#9c36b5` for gRPC endpoints (optional)
+- [ ] Gray `#495057` for external systems
+- [ ] Red `#e03131` for DLQ/error paths
+- [ ] Yellow `#f08c00` for warnings
 
 ### 7. Always Include Legend
 
@@ -222,13 +368,13 @@ Every diagram MUST include this legend:
 #### Highlight with colors:
 ```mermaid
 %% Warning: No timeout on gRPC call
-style GRPC_CALL fill:#ffd43b
+style GRPC_CALL fill:#f08c00
 
 %% Error: No DLQ configured
-style CONSUMER fill:#ff6b6b
+style CONSUMER fill:#e03131
 
 %% Warning: Single consumer for critical topic
-style SINGLE_CONSUMER fill:#ffd43b
+style SINGLE_CONSUMER fill:#f08c00
 ```
 
 ### 9. Output Structure
@@ -344,7 +490,7 @@ service PaymentService {
 
 Maps to:
 ```mermaid
-subgraph PaymentService [Payment Service - gRPC]
+subgraph payment-service ["Payment Service - gRPC"]
     P1[ProcessPayment]
     P2[RefundPayment]
 end

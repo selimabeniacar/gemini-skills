@@ -58,8 +58,8 @@ flowchart TD
 
 #### Styling
 - Highlight entry points with distinct color
-- Mark error-prone paths in red: `style NODE fill:#ff6b6b`
-- Mark external calls in blue: `style NODE fill:#4dabf7`
+- Mark error-prone paths in red: `style NODE fill:#e03131`
+- Mark external calls in blue: `style NODE fill:#1c7ed6`
 - Group related functions with subgraphs when helpful
 
 ### 5. Identify Suspicious Patterns
@@ -75,16 +75,16 @@ Flag and highlight:
 
 ```mermaid
 flowchart TD
-    subgraph entry [Entry Points]
+    subgraph entry ["Entry Points"]
         A[main.HandleRequest]
     end
 
-    subgraph core [Core Logic]
+    subgraph core ["Core Logic"]
         B[service.Process]
         C[service.Validate]
     end
 
-    subgraph external [External Calls]
+    subgraph external ["External Calls"]
         D[db.Query]
         E[api.Fetch]
     end
@@ -94,9 +94,9 @@ flowchart TD
     B --> D
     B --> E
 
-    style A fill:#69db7c
-    style D fill:#4dabf7
-    style E fill:#4dabf7
+    style A fill:#2f9e44
+    style D fill:#1c7ed6
+    style E fill:#1c7ed6
 ```
 
 After the diagram, include:
@@ -108,11 +108,11 @@ After the diagram, include:
 
 | Color | Hex | Use For |
 |-------|-----|---------|
-| Green | `#69db7c` | Entry points |
-| Blue | `#4dabf7` | External calls (DB, API, packages) |
-| Red | `#ff6b6b` | Error-prone paths, missing error handling |
-| Yellow | `#ffd43b` | Warnings, suspicious patterns |
-| Purple | `#be4bdb` | Goroutines, async operations |
+| Green | `#2f9e44` | Entry points |
+| Blue | `#1c7ed6` | External calls (DB, API, packages) |
+| Red | `#e03131` | Error-prone paths, missing error handling |
+| Yellow | `#f08c00` | Warnings, suspicious patterns |
+| Purple | `#9c36b5` | Goroutines, async operations |
 
 ## Output Reliability Checklist
 
