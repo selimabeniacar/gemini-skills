@@ -8,7 +8,7 @@
 ## Diagram
 
 ```mermaid
-flowchart LR
+flowchart TD
     %% ========================================
     %% Style Definitions
     %% ========================================

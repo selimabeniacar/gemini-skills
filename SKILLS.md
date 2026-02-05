@@ -15,21 +15,21 @@ Generate professional architectural diagrams through a multi-phase pipeline.
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--output=<name>` | Output filename (without extension) | `flow-diagram` |
-| `--phase=<n>` | Run only up to phase N (1-4) | 4 (all phases) |
-| `--no-tools` | Skip Phase 3 (if flowlint not installed) | false |
-| `--keep-deps` | Keep dependencies.yaml after completion | false |
+| `--no-tools` | Skip flowlint validation (if not installed) | false |
+| `--keep-deps` | Keep .flow-deps.yaml after completion | false |
 
 ## Output Files
 
 All files are written to the **current working directory**:
 
-| File | Phase | Cleaned Up? |
+| File | Phase | Description |
 |------|-------|-------------|
-| `.flow-deps.yaml` | Phase 1 | Yes (after Phase 4) |
-| `{output}.md` | Phase 2 | No (final diagram) |
-| `{output}-report.md` | Phase 4 | No (verification report) |
+| `{output}.md` | Phase 2 | **Always created** - the diagram |
+| `.flow-deps.yaml` | Phase 1 | Intermediate file, deleted on success |
 
-The intermediate `.flow-deps.yaml` file is automatically deleted after successful completion unless `--keep-deps` is specified.
+- **Diagram is always generated**, even if validation has issues
+- `.flow-deps.yaml` is deleted on success, kept on failure (for debugging)
+- Use `--keep-deps` to always keep the intermediate file
 
 ## Supported Languages
 
@@ -41,20 +41,26 @@ The intermediate `.flow-deps.yaml` file is automatically deleted after successfu
 ## Pipeline Overview
 
 ```
-Phase 1          Phase 2          Phase 3          Phase 4
-Discovery   →    Generation  →    Refinement  →    Verification
-    ↓                ↓                ↓                ↓
-dependencies    diagram.md      diagram.md       PASS/FAIL
-   .yaml         (draft)        (refined)
+Phase 1              Phase 2              Phase 3
+Discovery    →       Generation   →       Validation + Cleanup
+   ↓                     ↓                     ↓
+.flow-deps.yaml    flow-diagram.md      PASS → cleanup .flow-deps.yaml
+                   (ALWAYS created)       ↓
+                                        FAIL → AI reworks → re-validate
+                                          ↓
+                                        Still FAIL → warn, keep .flow-deps.yaml
 ```
 
-**Key Principle**: Each phase has ONE job. No phase does another's work.
+**Key Principle**:
+- Each phase has ONE job
+- **Diagram is ALWAYS generated** (Phase 2)
+- Validation issues = warnings, not blockers
 
 ---
 
 ## Phase 1: Discovery
 
-**Goal**: Extract ALL dependencies into `dependencies.yaml`
+**Goal**: Extract ALL dependencies into `.flow-deps.yaml`
 
 **Instructions**: Follow `prompts/phase1-discovery.md`
 
@@ -117,7 +123,6 @@ caches:
 
 ### Completion
 
-Report:
 ```
 Phase 1 Complete: Discovery
 
@@ -145,7 +150,7 @@ Proceeding to Phase 2...
 
 1. **DO NOT read the codebase** - only read .flow-deps.yaml
 2. **Follow the style guide exactly** - see `styles/diagram-styles.yaml`
-3. **No abbreviations** - use full names from dependencies.yaml
+3. **No abbreviations** - use full names from .flow-deps.yaml
 4. **Correct arrows** - `==>` sync, `-.->` async
 5. **Quote subgraph titles** - `subgraph id ["Title"]`
 
@@ -183,7 +188,6 @@ Write `{output}.md` (default: `flow-diagram.md`) using template from `templates/
 
 ### Completion
 
-Report:
 ```
 Phase 2 Complete: Generation
 
@@ -200,9 +204,9 @@ Proceeding to Phase 3...
 
 ---
 
-## Phase 3: Refinement
+## Phase 3: Validation & Cleanup
 
-**Goal**: Validate and fix the diagram using `flowlint`
+**Goal**: Validate diagram, rework if needed, cleanup
 
 ### Prerequisites
 
@@ -212,113 +216,82 @@ cd flow/tools/flowlint
 go build -o flowlint .
 ```
 
-Install Mermaid CLI (for validation):
+Install Mermaid CLI (optional, for syntax validation):
 ```bash
 npm install -g @mermaid-js/mermaid-cli
 ```
 
-### Commands
+### Step 3.1: Run flowlint
 
 ```bash
-# Run full refinement
-flowlint refine diagram.md dependencies.yaml --output diagram-final.md
-
-# Or run steps individually:
-flowlint validate diagram.md          # Check syntax
-flowlint lint diagram.md --fix        # Fix style issues
-flowlint check diagram.md deps.yaml   # Check completeness
+flowlint refine {output}.md .flow-deps.yaml
 ```
 
-### What flowlint Checks
+flowlint will:
+1. Validate Mermaid syntax (if mmdc installed)
+2. Check style guide compliance and auto-fix
+3. Verify all dependencies are represented
 
-1. **Syntax** - Mermaid compiles without errors
-2. **Style** - Correct arrows, quoted subgraphs, classDefs
-3. **Completeness** - All dependencies represented
-4. **No orphans** - All nodes connected
+### Step 3.2: Handle Results
 
-### Skip Phase 3
+#### If PASS:
+```
+✓ Refinement complete - diagram is ready
 
-If flowlint not available, use `--no-tools` flag:
+Cleanup: Delete .flow-deps.yaml
+Done.
+```
+
+#### If FAIL:
+AI attempts **one rework cycle**:
+
+| Failure Type | AI Action |
+|--------------|-----------|
+| Syntax error | Fix the Mermaid syntax in {output}.md |
+| Missing dependencies | Add missing nodes to diagram |
+| Style issues | Apply correct arrows/shapes/colors |
+
+After rework, re-run flowlint:
+```bash
+flowlint refine {output}.md .flow-deps.yaml
+```
+
+#### If still FAIL after rework:
+```
+⚠️ Validation incomplete - diagram generated with issues.
+
+Output: {output}.md (diagram created, may have issues)
+Kept: .flow-deps.yaml (for debugging)
+
+Issues:
+- {list of remaining issues}
+
+The diagram is usable but may need manual fixes.
+Run: flowlint lint {output}.md --fix
+```
+
+**The diagram is ALWAYS generated.** Validation failure just means it may not be perfect.
+
+### Skip Validation
+
+If flowlint not available:
 ```
 /flow services/ledger/ --no-tools
 ```
 
-### Completion
+This skips validation entirely - use with caution.
 
-Report:
-```
-Phase 3 Complete: Refinement
-
-Applied fixes: {count}
-Remaining issues: {count}
-
-Proceeding to Phase 4...
-```
-
----
-
-## Phase 4: Verification
-
-**Goal**: Final verification that diagram is complete and correct
-
-**Instructions**: Follow `prompts/phase4-verification.md`
-
-### Checks
-
-1. All dependencies from YAML appear in diagram
-2. Arrow styles match communication types
-3. Style classes applied correctly
-4. No orphan nodes
-5. Legend present
-
-### Output
-
-Write `{output}-report.md` (default: `flow-diagram-report.md`):
-
-```markdown
-# Verification Report
-
-## Status: PASS / FAIL
-
-## Coverage
-| Category | Expected | Found | Missing |
-|----------|----------|-------|---------|
-| Services | 5 | 5 | 0 |
-| Kafka | 3 | 3 | 0 |
-| Databases | 1 | 1 | 0 |
-
-## Issues Found
-- None
-
-## Render Commands
-mmdc -i diagram.md -o diagram.png -b white
-```
-
-### Cleanup
-
-After successful verification (Status: PASS), **delete the intermediate file**:
-
-```bash
-rm .flow-deps.yaml
-```
-
-Skip cleanup if `--keep-deps` was specified.
-
-### Completion
+### Completion (Success)
 
 ```
-Phase 4 Complete: Verification
+Phase 3 Complete: Validation
 
 Status: PASS
-
-All 11 dependencies represented.
-No style issues.
+Coverage: 10/10 (100%)
 
 Cleaned up: .flow-deps.yaml
 
-Output files:
-- {output}.md (diagram)
-- {output}-report.md (verification)
+Output: {output}.md
 
 Render with:
 mmdc -i {output}.md -o diagram.png -b white
@@ -335,10 +308,7 @@ mmdc -i {output}.md -o diagram.png -b white
 # Custom output name (outputs ledger-arch.md)
 /flow services/ledger/ --output=ledger-arch
 
-# Stop after discovery (inspect .flow-deps.yaml)
-/flow services/ledger/ --phase=1
-
-# Skip tooling validation
+# Skip validation (if flowlint not installed)
 /flow services/ledger/ --no-tools
 
 # Keep intermediate dependencies file
@@ -352,15 +322,13 @@ mmdc -i {output}.md -o diagram.png -b white
 ```
 flow/
 ├── SKILLS.md                 # This file
-├── PLAN.md                   # Implementation plan
 ├── schemas/
 │   └── dependencies.schema.yaml
 ├── styles/
 │   └── diagram-styles.yaml
 ├── prompts/
 │   ├── phase1-discovery.md
-│   ├── phase2-generation.md
-│   └── phase4-verification.md
+│   └── phase2-generation.md
 ├── templates/
 │   └── diagram-template.md
 ├── tools/
@@ -382,14 +350,14 @@ flow/
 ### "Diagram has syntax errors"
 - Check subgraph titles are quoted: `subgraph id ["Title"]`
 - Check arrow syntax: `==>`, `-.->`, `-->`
-- Run `flowlint validate diagram.md` for details.
+- Run `flowlint validate {output}.md` for details.
 
 ### "Missing dependencies"
-- Run `flowlint check diagram.md dependencies.yaml`
+- Run `flowlint check {output}.md .flow-deps.yaml`
 - Add missing nodes to the diagram
-- Re-run Phase 4 verification
+- Re-run flowlint
 
 ### "Wrong arrow style"
 - Sync calls (gRPC, HTTP, SQL) use `==>`
 - Async calls (Kafka, queues) use `-.->`
-- Run `flowlint lint diagram.md --fix` to auto-fix
+- Run `flowlint lint {output}.md --fix` to auto-fix

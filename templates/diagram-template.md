@@ -1,16 +1,16 @@
-# Service Flow: {SERVICE_NAME}
+# Service Flow: __SERVICE_NAME__
 
-> Generated: {TIMESTAMP}
-> Source: {TARGET_PATH}
+> Generated: __TIMESTAMP__
+> Source: __TARGET_PATH__
 
 ---
 
 ## Diagram
 
 ```mermaid
-flowchart LR
+flowchart TD
     %% ========================================
-    %% Style Definitions
+    %% Style Definitions (copy exactly)
     %% ========================================
     classDef service fill:#228be6,stroke:#1971c2,color:#fff
     classDef entry fill:#40c057,stroke:#2f9e44,color:#fff
@@ -20,61 +20,85 @@ flowchart LR
     classDef external fill:#868e96,stroke:#495057,color:#fff
 
     %% ========================================
-    %% Entry Points
+    %% Entry Points (TOP) - services that call this one
+    %% Replace with actual caller services
     %% ========================================
     subgraph entry ["Entry Points"]
-        {ENTRY_NODES}
+        E1[Caller Service 1]
+        E2[Caller Service 2]
     end
 
     %% ========================================
-    %% {SERVICE_NAME}
+    %% Target Service - the service being documented
+    %% Replace with actual handlers/components
     %% ========================================
-    subgraph target ["{SERVICE_NAME}"]
-        {TARGET_NODES}
+    subgraph target ["__SERVICE_NAME__"]
+        T1[Handler 1]
+        T2[Handler 2]
     end
 
     %% ========================================
-    %% Dependent Services
+    %% Dependencies - services this one calls
+    %% Replace with actual dependencies
     %% ========================================
     subgraph deps ["Dependencies"]
-        {DEPENDENCY_NODES}
+        D1[Dependency Service 1]
+        D2[Dependency Service 2]
     end
 
     %% ========================================
-    %% Message Bus
+    %% Message Bus - Kafka topics
+    %% Use cylinder shape: [(topic.name)]
     %% ========================================
     subgraph kafka ["Message Bus"]
-        {KAFKA_NODES}
+        K1[(topic.consumed)]
+        K2[(topic.produced)]
     end
 
     %% ========================================
-    %% Data Stores
+    %% Data Stores - databases and caches
+    %% Database: [(Name)], Cache: (Name)
     %% ========================================
     subgraph data ["Data Stores"]
-        {DATA_NODES}
+        DB1[(PostgreSQL)]
+        C1(Redis Cache)
     end
 
     %% ========================================
-    %% External Systems
+    %% External Systems (BOTTOM)
+    %% Use double brackets: [[Name]]
     %% ========================================
     subgraph ext ["External Systems"]
-        {EXTERNAL_NODES}
+        X1[[External API]]
     end
 
     %% ========================================
-    %% Sync Connections (gRPC, HTTP, SQL)
+    %% Sync Connections - use ==> for gRPC/HTTP/SQL
     %% ========================================
-    {SYNC_CONNECTIONS}
+    E1 ==>|gRPC| T1
+    E2 ==>|HTTP| T1
+    T1 --> T2
+    T2 ==>|gRPC: Method| D1
+    T2 ==>|SQL| DB1
+    T2 ==>|cache| C1
+    D1 ==>|HTTPS| X1
 
     %% ========================================
-    %% Async Connections (Kafka)
+    %% Async Connections - use -.-> for Kafka
     %% ========================================
-    {ASYNC_CONNECTIONS}
+    K1 -.->|consume| T1
+    T2 -.->|publish| K2
 
     %% ========================================
-    %% Apply Styles
+    %% Apply Styles (list all node IDs)
     %% ========================================
-    {CLASS_APPLICATIONS}
+    class E1,E2 entry
+    class T1,T2 service
+    class D1,D2 service
+    class K1,K2 kafka
+    class DB1 database
+    class C1 cache
+    class X1 external
 ```
 
 ---
@@ -89,13 +113,13 @@ flowchart LR
 
 ### Node Shapes
 
-| Shape | Meaning |
-|-------|---------|
-| `[Rectangle]` | Service, Handler |
-| `[(Cylinder)]` | Database, Kafka Topic |
-| `([Stadium])` | Consumer Group |
-| `[[Double Rect]]` | External System |
-| `(Rounded)` | Cache |
+| Shape | Meaning | Syntax |
+|-------|---------|--------|
+| Rectangle | Service, Handler | `[Name]` |
+| Cylinder | Database, Kafka Topic | `[(Name)]` |
+| Stadium | Consumer Group | `([Name])` |
+| Double Rectangle | External System | `[[Name]]` |
+| Rounded | Cache | `(Name)` |
 
 ### Colors
 
@@ -114,7 +138,7 @@ flowchart LR
 
 | From | To | Type | Method/Endpoint | Timeout | Retry | Source |
 |------|-----|------|-----------------|---------|-------|--------|
-{SYNC_TABLE}
+| _fill from .flow-deps.yaml_ | | | | | | |
 
 ---
 
@@ -122,23 +146,7 @@ flowchart LR
 
 | Topic | Direction | Consumer Group | DLQ | Source |
 |-------|-----------|----------------|-----|--------|
-{ASYNC_TABLE}
-
----
-
-## External Systems
-
-| System | Type | Purpose | Source |
-|--------|------|---------|--------|
-{EXTERNAL_TABLE}
-
----
-
-## Data Stores
-
-| Store | Type | Operations | Source |
-|-------|------|------------|--------|
-{DATA_TABLE}
+| _fill from .flow-deps.yaml_ | | | | |
 
 ---
 
@@ -146,23 +154,16 @@ flowchart LR
 
 All dependencies traced from:
 
-{SOURCE_REFERENCES}
+- _list source files from .flow-deps.yaml_
 
 ---
 
 ## Render Commands
 
-Generate PNG (recommended for documentation):
 ```bash
-mmdc -i diagram.md -o diagram.png -b white -w 1920 -H 1080
-```
+# PNG (for documentation)
+mmdc -i flow-diagram.md -o flow-diagram.png -b white -w 1920 -H 1080
 
-Generate SVG (for web):
-```bash
-mmdc -i diagram.md -o diagram.svg -b white
-```
-
-Generate PDF:
-```bash
-mmdc -i diagram.md -o diagram.pdf -b white
+# SVG (for web)
+mmdc -i flow-diagram.md -o flow-diagram.svg -b white
 ```

@@ -185,7 +185,7 @@ This ensures consistency because:
 ### Style Guide (Non-Negotiable)
 
 #### Layout
-- **Direction**: `flowchart LR` (left-to-right) for service flows
+- **Direction**: `flowchart TD` (left-to-right) for service flows
 - **Grouping**: Related services in subgraphs
 - **Ordering**: Entry points on left, external systems on right
 - **Spacing**: Use invisible nodes if needed for alignment
@@ -251,7 +251,7 @@ Source: {target_path}
 ## Diagram
 
 \`\`\`mermaid
-flowchart LR
+flowchart TD
     %% Style definitions
     classDef service fill:#228be6,stroke:#1971c2,color:#fff
     classDef kafka fill:#12b886,stroke:#099268,color:#fff

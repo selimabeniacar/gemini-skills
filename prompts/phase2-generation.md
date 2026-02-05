@@ -27,21 +27,31 @@ Read `{output_dir}/dependencies.yaml` and parse:
 
 ### Step 2: Plan the Diagram Layout
 
-Based on dependencies, plan node placement:
+Based on dependencies, plan node placement (top-down hierarchy):
 
 ```
-LEFT → → → → → → → → → → → → → → → → → → → → RIGHT
-
-[Entry Points] → [Target Service] → [Dependencies] → [Message Bus] → [Data/External]
+                    TOP
+                     ↓
+            [Entry Points/Callers]
+                     ↓
+             [Target Service]
+                     ↓
+          [Dependent Services]
+                     ↓
+    [Message Bus]     [Data Stores]
+                     ↓
+            [External Systems]
+                     ↓
+                   BOTTOM
 ```
 
 Group nodes:
-1. **Entry Points** - How traffic enters (API gateway, load balancer, direct gRPC)
+1. **Entry Points** - How traffic enters (callers, API gateway) - TOP
 2. **Target Service** - The service being documented (handlers, processors)
 3. **Dependent Services** - Services this one calls synchronously
-4. **Message Bus** - Kafka topics
+4. **Message Bus** - Kafka topics (can be at same level as data stores)
 5. **Data Stores** - Databases, caches
-6. **External Systems** - Third-party APIs
+6. **External Systems** - Third-party APIs - BOTTOM
 
 ### Step 3: Generate Mermaid Code
 
@@ -50,7 +60,7 @@ Follow the style guide in `styles/diagram-styles.yaml` EXACTLY.
 #### Mermaid Structure
 
 ```mermaid
-flowchart LR
+flowchart TD
     %% ========================================
     %% Style Definitions (REQUIRED)
     %% ========================================

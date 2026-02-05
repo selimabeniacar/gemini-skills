@@ -6,16 +6,16 @@
 # LAYOUT
 # ============================================================================
 layout:
-  direction: "LR"  # Left-to-right flow (use TB for top-to-bottom)
+  direction: "TD"  # Top-down flow (hierarchical, industry standard)
 
-  # Node ordering (left to right)
+  # Node ordering (top to bottom)
   order:
-    - entry_points      # API gateways, load balancers
+    - entry_points      # API gateways, callers (TOP)
     - target_service    # The service being documented
     - dependent_services # Services this one calls
     - message_bus       # Kafka topics, queues
     - data_stores       # Databases, caches
-    - external_systems  # Third-party APIs
+    - external_systems  # Third-party APIs (BOTTOM)
 
 # ============================================================================
 # COLORS
