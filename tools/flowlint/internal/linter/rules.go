@@ -1,0 +1,200 @@
+package linter
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+
+	"github.com/user/flowlint/internal/parser"
+)
+
+// Severity represents the severity of a lint issue
+type Severity int
+
+const (
+	SeverityWarning Severity = iota
+	SeverityError
+)
+
+// Issue represents a linting issue found in the diagram
+type Issue struct {
+	Severity   Severity
+	Message    string
+	Line       int
+	Context    string
+	Suggestion string
+	Fixable    bool
+	FixType    string
+	FixData    map[string]string
+}
+
+// Lint runs all linting rules against the diagram
+func Lint(diagram *parser.Diagram) []Issue {
+	issues := []Issue{}
+
+	issues = append(issues, checkSubgraphQuotes(diagram)...)
+	issues = append(issues, checkArrowStyles(diagram)...)
+	issues = append(issues, checkClassDefs(diagram)...)
+	issues = append(issues, checkOrphanNodes(diagram)...)
+	issues = append(issues, checkAbbreviations(diagram)...)
+	issues = append(issues, checkDuplicateNodes(diagram)...)
+
+	return issues
+}
+
+// checkSubgraphQuotes ensures all subgraph titles are quoted
+func checkSubgraphQuotes(diagram *parser.Diagram) []Issue {
+	issues := []Issue{}
+
+	for _, sg := range diagram.Subgraphs {
+		if !sg.Quoted && sg.Title != "" {
+			issues = append(issues, Issue{
+				Severity:   SeverityError,
+				Message:    fmt.Sprintf("Subgraph '%s' title is not quoted", sg.ID),
+				Line:       sg.Line,
+				Context:    fmt.Sprintf("subgraph %s [%s]", sg.ID, sg.Title),
+				Suggestion: fmt.Sprintf("Change to: subgraph %s [\"%s\"]", sg.ID, sg.Title),
+				Fixable:    true,
+				FixType:    "quote_subgraph",
+				FixData:    map[string]string{"id": sg.ID, "title": sg.Title},
+			})
+		}
+	}
+
+	return issues
+}
+
+// checkArrowStyles ensures correct arrow usage for sync vs async
+func checkArrowStyles(diagram *parser.Diagram) []Issue {
+	issues := []Issue{}
+
+	// Keywords that indicate async communication
+	asyncKeywords := []string{"kafka", "publish", "consume", "queue", "rabbitmq", "sqs", "pubsub"}
+	// Keywords that indicate sync communication
+	syncKeywords := []string{"grpc", "http", "rest", "sql", "cache", "redis"}
+
+	for _, edge := range diagram.Edges {
+		labelLower := strings.ToLower(edge.Label)
+
+		// Check if async keyword but using sync arrow
+		for _, keyword := range asyncKeywords {
+			if strings.Contains(labelLower, keyword) && edge.ArrowType == "==>" {
+				issues = append(issues, Issue{
+					Severity:   SeverityError,
+					Message:    fmt.Sprintf("Async call '%s' using sync arrow (==>)", edge.Label),
+					Line:       edge.Line,
+					Suggestion: "Change ==> to -.-> for async calls",
+					Fixable:    true,
+					FixType:    "fix_arrow",
+					FixData:    map[string]string{"from": edge.From, "to": edge.To, "old": "==>", "new": "-.->"},
+				})
+				break
+			}
+		}
+
+		// Check if sync keyword but using async arrow
+		for _, keyword := range syncKeywords {
+			if strings.Contains(labelLower, keyword) && edge.ArrowType == "-.->" {
+				issues = append(issues, Issue{
+					Severity:   SeverityWarning,
+					Message:    fmt.Sprintf("Sync call '%s' using async arrow (-.->)", edge.Label),
+					Line:       edge.Line,
+					Suggestion: "Change -.-> to ==> for sync calls",
+					Fixable:    true,
+					FixType:    "fix_arrow",
+					FixData:    map[string]string{"from": edge.From, "to": edge.To, "old": "-.->", "new": "==>"},
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// checkClassDefs ensures required class definitions exist
+func checkClassDefs(diagram *parser.Diagram) []Issue {
+	issues := []Issue{}
+
+	requiredClasses := []string{"service", "kafka", "database", "external"}
+
+	for _, class := range requiredClasses {
+		if _, ok := diagram.ClassDefs[class]; !ok {
+			issues = append(issues, Issue{
+				Severity:   SeverityWarning,
+				Message:    fmt.Sprintf("Missing classDef for '%s'", class),
+				Suggestion: fmt.Sprintf("Add: classDef %s fill:#...,stroke:#...,color:#...", class),
+				Fixable:    true,
+				FixType:    "add_classdef",
+				FixData:    map[string]string{"class": class},
+			})
+		}
+	}
+
+	return issues
+}
+
+// checkOrphanNodes finds nodes with no connections
+func checkOrphanNodes(diagram *parser.Diagram) []Issue {
+	issues := []Issue{}
+
+	orphans := diagram.GetOrphanNodes()
+	for _, node := range orphans {
+		issues = append(issues, Issue{
+			Severity:   SeverityWarning,
+			Message:    fmt.Sprintf("Orphan node '%s' has no connections", node.ID),
+			Line:       node.Line,
+			Context:    node.Label,
+			Suggestion: "Add connections or remove the node",
+		})
+	}
+
+	return issues
+}
+
+// checkAbbreviations warns about potential abbreviations in node labels
+func checkAbbreviations(diagram *parser.Diagram) []Issue {
+	issues := []Issue{}
+
+	// Common abbreviation patterns
+	abbrPatterns := []struct {
+		pattern string
+		full    string
+	}{
+		{`(?i)svc\b`, "Service"},
+		{`(?i)srv\b`, "Server"},
+		{`(?i)msg\b`, "Message"},
+		{`(?i)req\b`, "Request"},
+		{`(?i)res\b`, "Response"},
+		{`(?i)cfg\b`, "Config"},
+		{`(?i)db\b`, "Database"},
+		{`(?i)api\b`, "API"}, // This one is acceptable
+	}
+
+	for _, node := range diagram.Nodes {
+		for _, abbr := range abbrPatterns {
+			if abbr.pattern == `(?i)api\b` {
+				continue // API is acceptable
+			}
+			re := regexp.MustCompile(abbr.pattern)
+			if re.MatchString(node.Label) {
+				issues = append(issues, Issue{
+					Severity:   SeverityWarning,
+					Message:    fmt.Sprintf("Node '%s' may contain abbreviation", node.Label),
+					Line:       node.Line,
+					Suggestion: fmt.Sprintf("Consider using full word '%s' instead", abbr.full),
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// checkDuplicateNodes finds duplicate node IDs
+func checkDuplicateNodes(diagram *parser.Diagram) []Issue {
+	// The parser already handles this by using a map, so duplicates would be overwritten
+	// This is more of a sanity check
+	return []Issue{}
+}

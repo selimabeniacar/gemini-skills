@@ -1,0 +1,211 @@
+# Diagram Style Guide
+# This file defines ALL visual conventions for generated diagrams
+# These rules are NON-NEGOTIABLE - consistency is critical
+
+# ============================================================================
+# LAYOUT
+# ============================================================================
+layout:
+  direction: "LR"  # Left-to-right flow (use TB for top-to-bottom)
+
+  # Node ordering (left to right)
+  order:
+    - entry_points      # API gateways, load balancers
+    - target_service    # The service being documented
+    - dependent_services # Services this one calls
+    - message_bus       # Kafka topics, queues
+    - data_stores       # Databases, caches
+    - external_systems  # Third-party APIs
+
+# ============================================================================
+# COLORS
+# ============================================================================
+# All colors tested for readability and professional appearance
+colors:
+  # Services
+  service:
+    fill: "#228be6"      # Blue
+    stroke: "#1971c2"
+    text: "#ffffff"
+
+  # Entry points (API endpoints, ingress)
+  entry:
+    fill: "#40c057"      # Green
+    stroke: "#2f9e44"
+    text: "#ffffff"
+
+  # Kafka topics and message queues
+  kafka:
+    fill: "#12b886"      # Teal
+    stroke: "#099268"
+    text: "#ffffff"
+
+  # Databases
+  database:
+    fill: "#fab005"      # Yellow/Gold
+    stroke: "#f59f00"
+    text: "#000000"      # Black text for readability
+
+  # Caches (Redis, Memcached)
+  cache:
+    fill: "#be4bdb"      # Purple
+    stroke: "#9c36b5"
+    text: "#ffffff"
+
+  # External systems (third-party APIs)
+  external:
+    fill: "#868e96"      # Gray
+    stroke: "#495057"
+    text: "#ffffff"
+
+  # Error paths, DLQ
+  error:
+    fill: "#fa5252"      # Red
+    stroke: "#e03131"
+    text: "#ffffff"
+
+  # Warnings, highlights
+  warning:
+    fill: "#fd7e14"      # Orange
+    stroke: "#e8590c"
+    text: "#ffffff"
+
+# ============================================================================
+# NODE SHAPES
+# ============================================================================
+# Mermaid shape syntax reference
+shapes:
+  # Rectangle [text] - Services, handlers, processors
+  service: "rectangle"           # [Service Name]
+  handler: "rectangle"           # [Handler Name]
+
+  # Cylinder [(text)] - Data stores, topics
+  database: "cylinder"           # [(PostgreSQL)]
+  kafka_topic: "cylinder"        # [(topic.name)]
+
+  # Stadium ([text]) - Consumer groups, pools
+  consumer_group: "stadium"      # ([consumer-group])
+
+  # Double rectangle [[text]] - External systems
+  external: "double_rectangle"   # [[Stripe API]]
+
+  # Rounded rectangle (text) - Caches
+  cache: "rounded"               # (Redis Cache)
+
+  # Diamond {text} - Decisions, routers
+  decision: "diamond"            # {retry?}
+
+  # Hexagon {{text}} - Events, triggers
+  event: "hexagon"               # {{cron}}
+
+# ============================================================================
+# ARROW STYLES
+# ============================================================================
+arrows:
+  # Synchronous calls - thick solid arrow
+  sync:
+    style: "==>"
+    description: "Caller blocks, waits for response"
+    use_for:
+      - "gRPC calls"
+      - "HTTP/REST requests"
+      - "Database queries"
+      - "Cache operations"
+
+  # Asynchronous messages - dotted arrow
+  async:
+    style: "-.->"
+    description: "Fire and forget, processed later"
+    use_for:
+      - "Kafka produce"
+      - "Kafka consume"
+      - "RabbitMQ"
+      - "SQS"
+      - "Pub/Sub"
+
+  # Internal calls - thin solid arrow
+  internal:
+    style: "-->"
+    description: "Function call within same service"
+    use_for:
+      - "Method calls"
+      - "Internal routing"
+
+# ============================================================================
+# LABELS
+# ============================================================================
+labels:
+  # Arrow label format
+  sync_grpc: "|gRPC: {method}|"
+  sync_http: "|HTTP {verb}|"
+  sync_sql: "|SQL|"
+  async_produce: "|publish|"
+  async_consume: "|consume|"
+
+  # Node naming rules
+  naming:
+    services: "Title Case, no abbreviations"
+    topics: "lowercase, dot.separated"
+    databases: "Title Case (e.g., PostgreSQL)"
+    methods: "PascalCase (e.g., ProcessPayment)"
+
+# ============================================================================
+# SUBGRAPHS
+# ============================================================================
+subgraphs:
+  # Always use quoted titles
+  syntax: 'subgraph id ["Display Name"]'
+
+  # Standard subgraph IDs and names
+  standard:
+    - id: "entry"
+      name: "Entry Points"
+    - id: "target"
+      name: "{service_name}"  # Replace with actual service name
+    - id: "deps"
+      name: "Dependencies"
+    - id: "kafka"
+      name: "Message Bus"
+    - id: "data"
+      name: "Data Stores"
+    - id: "ext"
+      name: "External Systems"
+
+# ============================================================================
+# MERMAID CLASS DEFINITIONS
+# ============================================================================
+# Copy these exactly into every diagram
+classDefs: |
+  classDef service fill:#228be6,stroke:#1971c2,color:#fff
+  classDef entry fill:#40c057,stroke:#2f9e44,color:#fff
+  classDef kafka fill:#12b886,stroke:#099268,color:#fff
+  classDef database fill:#fab005,stroke:#f59f00,color:#000
+  classDef cache fill:#be4bdb,stroke:#9c36b5,color:#fff
+  classDef external fill:#868e96,stroke:#495057,color:#fff
+  classDef error fill:#fa5252,stroke:#e03131,color:#fff
+
+# ============================================================================
+# BEST PRACTICES
+# ============================================================================
+best_practices:
+  - "Maximum 15 nodes per diagram - split if larger"
+  - "Maximum 25 edges per diagram"
+  - "One arrow between subgroups when possible"
+  - "No crossing arrows if avoidable (reorder nodes)"
+  - "All nodes must be connected (no orphans)"
+  - "Legend required in every diagram"
+  - "Source file references in summary table"
+
+# ============================================================================
+# ANTI-PATTERNS (DO NOT DO)
+# ============================================================================
+anti_patterns:
+  - "Abbreviations (OrdSvc, PaySvc) - use full names"
+  - "Multiple arrow styles for same type of call"
+  - "Unquoted subgraph titles"
+  - "Missing classDef applications"
+  - "Tiny unreadable text"
+  - "Giant empty subgraphs"
+  - "Tangled arrow spaghetti"
+  - "Orphan nodes with no connections"
+  - "Inconsistent colors for same type"
