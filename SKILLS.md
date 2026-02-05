@@ -24,10 +24,12 @@ All files are written to the **current working directory**:
 
 | File | Phase | Description |
 |------|-------|-------------|
-| `{output}.md` | Phase 2 | **Always created** - the diagram |
+| `{output}.md` | Phase 2 | **Always created** - the diagram source |
+| `{output}.png` | Phase 3 | Rendered image (if mmdc installed) |
 | `.flow-deps.yaml` | Phase 1 | Intermediate file, deleted on success |
 
 - **Diagram is always generated**, even if validation has issues
+- PNG is generated if `mmdc` (Mermaid CLI) is installed
 - `.flow-deps.yaml` is deleted on success, kept on failure (for debugging)
 - Use `--keep-deps` to always keep the intermediate file
 
@@ -42,10 +44,12 @@ All files are written to the **current working directory**:
 
 ```
 Phase 1              Phase 2              Phase 3
-Discovery    →       Generation   →       Validation + Cleanup
+Discovery    →       Generation   →       Validation + Render + Cleanup
    ↓                     ↓                     ↓
-.flow-deps.yaml    flow-diagram.md      PASS → cleanup .flow-deps.yaml
+.flow-deps.yaml    flow-diagram.md      Run flowlint
                    (ALWAYS created)       ↓
+                                        PASS → render PNG → cleanup
+                                          ↓
                                         FAIL → AI reworks → re-validate
                                           ↓
                                         Still FAIL → warn, keep .flow-deps.yaml
@@ -54,6 +58,7 @@ Discovery    →       Generation   →       Validation + Cleanup
 **Key Principle**:
 - Each phase has ONE job
 - **Diagram is ALWAYS generated** (Phase 2)
+- PNG rendered if mmdc installed
 - Validation issues = warnings, not blockers
 
 ---
@@ -223,37 +228,53 @@ npm install -g @mermaid-js/mermaid-cli
 
 ### Step 3.1: Run flowlint
 
+**YOU MUST EXECUTE THIS COMMAND VIA BASH:**
+
 ```bash
-flowlint refine {output}.md .flow-deps.yaml
+./flow/tools/flowlint/flowlint refine {output}.md .flow-deps.yaml --skip-validate
 ```
 
+Or if flowlint is in PATH:
+```bash
+flowlint refine {output}.md .flow-deps.yaml --skip-validate
+```
+
+**DO NOT SKIP THIS STEP. Actually run the command and check the output.**
+
 flowlint will:
-1. Validate Mermaid syntax (if mmdc installed)
-2. Check style guide compliance and auto-fix
-3. Verify all dependencies are represented
+1. Check style guide compliance and auto-fix
+2. Verify all dependencies are represented
+3. Report PASS or FAIL
 
 ### Step 3.2: Handle Results
 
-#### If PASS:
+**Read the flowlint output carefully.**
+
+#### If flowlint output shows PASS (exit code 0):
 ```
 ✓ Refinement complete - diagram is ready
-
-Cleanup: Delete .flow-deps.yaml
-Done.
 ```
 
-#### If FAIL:
-AI attempts **one rework cycle**:
+Then cleanup:
+```bash
+rm .flow-deps.yaml
+```
+
+Done.
+
+#### If flowlint output shows FAIL (exit code 1):
+
+**Read the error messages.** Then attempt **one rework cycle**:
 
 | Failure Type | AI Action |
 |--------------|-----------|
-| Syntax error | Fix the Mermaid syntax in {output}.md |
-| Missing dependencies | Add missing nodes to diagram |
-| Style issues | Apply correct arrows/shapes/colors |
+| Syntax error | Edit {output}.md to fix the Mermaid syntax |
+| Missing dependencies | Edit {output}.md to add missing nodes |
+| Style issues | Edit {output}.md to fix arrows/shapes/colors |
 
-After rework, re-run flowlint:
+After editing the diagram, re-run flowlint:
 ```bash
-flowlint refine {output}.md .flow-deps.yaml
+./flow/tools/flowlint/flowlint refine {output}.md .flow-deps.yaml --skip-validate
 ```
 
 #### If still FAIL after rework:
@@ -272,14 +293,33 @@ Run: flowlint lint {output}.md --fix
 
 **The diagram is ALWAYS generated.** Validation failure just means it may not be perfect.
 
+### Finding flowlint
+
+flowlint is located at:
+```
+flow/tools/flowlint/flowlint
+```
+
+If you get "command not found", use the full path relative to the skill directory.
+
 ### Skip Validation
 
-If flowlint not available:
+If flowlint not available or not built:
 ```
 /flow services/ledger/ --no-tools
 ```
 
 This skips validation entirely - use with caution.
+
+### Step 3.3: Generate PNG (if mmdc available)
+
+After validation passes, generate a PNG:
+
+```bash
+mmdc -i {output}.md -o {output}.png -b white -w 1920
+```
+
+If mmdc is not installed, skip this step and inform the user how to render manually.
 
 ### Completion (Success)
 
@@ -291,10 +331,12 @@ Coverage: 10/10 (100%)
 
 Cleaned up: .flow-deps.yaml
 
-Output: {output}.md
+Output:
+- {output}.md (diagram source)
+- {output}.png (rendered image, if mmdc available)
 
-Render with:
-mmdc -i {output}.md -o diagram.png -b white
+If PNG not generated, render manually:
+mmdc -i {output}.md -o {output}.png -b white
 ```
 
 ---
