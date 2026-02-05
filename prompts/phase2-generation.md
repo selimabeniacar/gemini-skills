@@ -64,17 +64,18 @@ flowchart TD
     %% ========================================
     %% Style Definitions (REQUIRED)
     %% ========================================
-    classDef service fill:#228be6,stroke:#1971c2,color:#fff
-    classDef entry fill:#40c057,stroke:#2f9e44,color:#fff
-    classDef kafka fill:#12b886,stroke:#099268,color:#fff
-    classDef database fill:#fab005,stroke:#f59f00,color:#000
-    classDef cache fill:#be4bdb,stroke:#9c36b5,color:#fff
-    classDef external fill:#868e96,stroke:#495057,color:#fff
+    classDef service fill:#a5d8ff,stroke:#339af0,color:#1864ab
+    classDef entry fill:#b2f2bb,stroke:#51cf66,color:#2b8a3e
+    classDef kafka fill:#96f2d7,stroke:#38d9a9,color:#087f5b
+    classDef database fill:#ffec99,stroke:#fcc419,color:#e67700
+    classDef cache fill:#d0bfff,stroke:#9775fa,color:#6741d9
+    classDef external fill:#dee2e6,stroke:#adb5bd,color:#495057
 
     %% ========================================
-    %% Entry Points (leftmost)
+    %% Entry Points (TOP)
     %% ========================================
     subgraph entry ["Entry Points"]
+        direction LR
         E1[gRPC Server]
         E2[HTTP Server]
     end
@@ -89,8 +90,10 @@ flowchart TD
 
     %% ========================================
     %% Dependent Services
+    %% Use direction LR to spread horizontally
     %% ========================================
     subgraph deps ["Dependencies"]
+        direction LR
         D1[Payment Service]
         D2[Inventory Service]
     end
@@ -99,6 +102,7 @@ flowchart TD
     %% Message Bus
     %% ========================================
     subgraph kafka ["Message Bus"]
+        direction LR
         K1[(order.created)]
         K2[(payment.completed)]
     end
@@ -107,12 +111,13 @@ flowchart TD
     %% Data Stores
     %% ========================================
     subgraph data ["Data Stores"]
+        direction LR
         DB1[(PostgreSQL)]
         C1(Redis Cache)
     end
 
     %% ========================================
-    %% External Systems (rightmost)
+    %% External Systems (BOTTOM)
     %% ========================================
     subgraph ext ["External Systems"]
         X1[[Stripe API]]
@@ -179,6 +184,57 @@ flowchart TD
 3. **Group by type**: All Kafka topics together, all databases together
 4. **Single service per subgraph** for clarity
 
+### Step 6.5: Layout Rules for Complex Diagrams
+
+**CRITICAL: When a subgraph has more than 3 nodes, use `direction LR` to spread them horizontally.**
+
+```mermaid
+subgraph deps ["Dependencies"]
+    direction LR
+    D1[Service A]
+    D2[Service B]
+    D3[Service C]
+    D4[Service D]
+end
+```
+
+**Key layout principles:**
+
+1. **Use `direction LR` inside subgraphs** - spreads nodes horizontally instead of stacking vertically
+2. **Group similar dependencies** - all gRPC services together, all databases together
+3. **Connect to subgraph, not individual nodes** when there are many dependencies
+4. **Maximum 6 nodes per row** - split into multiple subgraphs if needed
+5. **Keep the main flow vertical (TD)**, but spread groups horizontally
+
+**Example for 10+ dependencies:**
+
+```mermaid
+flowchart TD
+    subgraph target ["My Service"]
+        T1[Handler]
+    end
+
+    subgraph grpc-deps ["gRPC Services"]
+        direction LR
+        D1[Service A]
+        D2[Service B]
+        D3[Service C]
+        D4[Service D]
+    end
+
+    subgraph data-deps ["Data Stores"]
+        direction LR
+        DB1[(Postgres)]
+        DB2[(Redis)]
+        DB3[(Mongo)]
+    end
+
+    T1 ==> grpc-deps
+    T1 ==> data-deps
+```
+
+Use invisible links (`---`) to force horizontal layout within subgraphs if needed.
+
 ### Step 7: Write Complete Markdown File
 
 Use the template from `templates/diagram-template.md`:
@@ -198,16 +254,22 @@ Dependencies: {output_dir}/dependencies.yaml
 
 ## Legend
 
-| Symbol | Meaning |
-|--------|---------|
-| `==>` | Synchronous (gRPC/HTTP) - caller blocks |
-| `-.->` | Asynchronous (Kafka) - fire and forget |
-| `-->` | Internal call |
-| Blue rectangle | Service |
-| Green cylinder | Kafka topic |
-| Yellow cylinder | Database |
-| Gray double rectangle | External system |
-| Purple rounded | Cache |
+| Symbol | Meaning | Debug Approach |
+|--------|---------|----------------|
+| `==>` | **Synchronous** (gRPC/HTTP) - caller blocks | Check latency, timeouts, error codes |
+| `-.->` | **Asynchronous** (Kafka) - fire and forget | Check consumer lag, DLQ, offsets |
+| `-->` | Internal call | Check logs, traces |
+
+### Colors
+
+| Color | Meaning |
+|-------|---------|
+| Blue | Services |
+| Green | Entry Points |
+| Teal | Kafka Topics |
+| Yellow | Databases |
+| Purple | Caches |
+| Gray | External Systems |
 
 ## Sync Dependencies
 

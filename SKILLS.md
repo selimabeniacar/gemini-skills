@@ -161,14 +161,14 @@ Proceeding to Phase 2...
 
 ### Style Reference
 
-**Colors** (non-negotiable):
+**Colors** (muted, professional palette):
 ```
-classDef service fill:#228be6,stroke:#1971c2,color:#fff
-classDef entry fill:#40c057,stroke:#2f9e44,color:#fff
-classDef kafka fill:#12b886,stroke:#099268,color:#fff
-classDef database fill:#fab005,stroke:#f59f00,color:#000
-classDef cache fill:#be4bdb,stroke:#9c36b5,color:#fff
-classDef external fill:#868e96,stroke:#495057,color:#fff
+classDef service fill:#a5d8ff,stroke:#339af0,color:#1864ab
+classDef entry fill:#b2f2bb,stroke:#51cf66,color:#2b8a3e
+classDef kafka fill:#96f2d7,stroke:#38d9a9,color:#087f5b
+classDef database fill:#ffec99,stroke:#fcc419,color:#e67700
+classDef cache fill:#d0bfff,stroke:#9775fa,color:#6741d9
+classDef external fill:#dee2e6,stroke:#adb5bd,color:#495057
 ```
 
 **Shapes**:
@@ -186,6 +186,52 @@ classDef external fill:#868e96,stroke:#495057,color:#fff
 | Sync | `==>` | gRPC, HTTP, SQL |
 | Async | `-.->` | Kafka, queues |
 | Internal | `-->` | Function calls |
+
+### Layout Rules for Complex Diagrams
+
+**If more than 5 dependencies, use horizontal subgraphs:**
+
+```mermaid
+flowchart TD
+    subgraph target ["My Service"]
+        T1[Handler]
+    end
+
+    subgraph deps ["Dependencies"]
+        direction LR
+        D1[Service A]
+        D2[Service B]
+        D3[Service C]
+        D4[Service D]
+    end
+
+    T1 ==> deps
+```
+
+**Key layout principles:**
+1. Use `direction LR` inside subgraphs to spread nodes horizontally
+2. Group similar dependencies (all gRPC services together, all databases together)
+3. **Connect to subgraph, not individual nodes** when there are many dependencies
+4. Maximum 6 nodes per row - split into multiple subgraphs if needed
+5. Keep the main flow vertical (TD), but spread groups horizontally
+
+**Example for 10 dependencies:**
+```
+subgraph grpc-deps ["gRPC Services"]
+    direction LR
+    D1[Service A] --- D2[Service B] --- D3[Service C]
+end
+
+subgraph data-deps ["Data Stores"]
+    direction LR
+    DB1[(Postgres)] --- DB2[(Redis)] --- DB3[(Mongo)]
+end
+
+Target ==> grpc-deps
+Target ==> data-deps
+```
+
+Use invisible links (`---`) to force horizontal layout within subgraphs.
 
 ### Output
 

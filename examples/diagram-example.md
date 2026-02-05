@@ -10,19 +10,20 @@
 ```mermaid
 flowchart TD
     %% ========================================
-    %% Style Definitions
+    %% Style Definitions (muted, professional colors)
     %% ========================================
-    classDef service fill:#228be6,stroke:#1971c2,color:#fff
-    classDef entry fill:#40c057,stroke:#2f9e44,color:#fff
-    classDef kafka fill:#12b886,stroke:#099268,color:#fff
-    classDef database fill:#fab005,stroke:#f59f00,color:#000
-    classDef cache fill:#be4bdb,stroke:#9c36b5,color:#fff
-    classDef external fill:#868e96,stroke:#495057,color:#fff
+    classDef service fill:#a5d8ff,stroke:#339af0,color:#1864ab
+    classDef entry fill:#b2f2bb,stroke:#51cf66,color:#2b8a3e
+    classDef kafka fill:#96f2d7,stroke:#38d9a9,color:#087f5b
+    classDef database fill:#ffec99,stroke:#fcc419,color:#e67700
+    classDef cache fill:#d0bfff,stroke:#9775fa,color:#6741d9
+    classDef external fill:#dee2e6,stroke:#adb5bd,color:#495057
 
     %% ========================================
     %% Entry Points (Callers)
     %% ========================================
     subgraph entry ["Entry Points"]
+        direction LR
         E1[Order Service]
         E2[Reporting Service]
         E3[Admin Dashboard]
@@ -42,6 +43,7 @@ flowchart TD
     %% Dependent Services
     %% ========================================
     subgraph deps ["Dependencies"]
+        direction LR
         D1[Payment Service]
         D2[Account Service]
         D3[Audit Service]
@@ -51,6 +53,7 @@ flowchart TD
     %% Message Bus
     %% ========================================
     subgraph kafka ["Message Bus"]
+        direction LR
         K1[(order.completed)]
         K2[(payment.refunded)]
         K3[(ledger.transaction.created)]
@@ -61,6 +64,7 @@ flowchart TD
     %% Data Stores
     %% ========================================
     subgraph data ["Data Stores"]
+        direction LR
         DB1[(PostgreSQL)]
         C1(Redis Cache)
     end

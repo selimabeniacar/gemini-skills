@@ -18,57 +18,57 @@ layout:
     - external_systems  # Third-party APIs (BOTTOM)
 
 # ============================================================================
-# COLORS
+# COLORS (Muted, professional palette)
 # ============================================================================
-# All colors tested for readability and professional appearance
+# Softer colors for better readability and professional appearance
 colors:
-  # Services
+  # Services - soft blue
   service:
-    fill: "#228be6"      # Blue
-    stroke: "#1971c2"
-    text: "#ffffff"
+    fill: "#a5d8ff"      # Light blue
+    stroke: "#339af0"
+    text: "#1864ab"      # Dark blue text
 
-  # Entry points (API endpoints, ingress)
+  # Entry points - soft green
   entry:
-    fill: "#40c057"      # Green
-    stroke: "#2f9e44"
-    text: "#ffffff"
+    fill: "#b2f2bb"      # Light green
+    stroke: "#51cf66"
+    text: "#2b8a3e"      # Dark green text
 
-  # Kafka topics and message queues
+  # Kafka topics - soft teal
   kafka:
-    fill: "#12b886"      # Teal
-    stroke: "#099268"
-    text: "#ffffff"
+    fill: "#96f2d7"      # Light teal
+    stroke: "#38d9a9"
+    text: "#087f5b"      # Dark teal text
 
-  # Databases
+  # Databases - soft amber
   database:
-    fill: "#fab005"      # Yellow/Gold
-    stroke: "#f59f00"
-    text: "#000000"      # Black text for readability
+    fill: "#ffec99"      # Light yellow
+    stroke: "#fcc419"
+    text: "#e67700"      # Dark amber text
 
-  # Caches (Redis, Memcached)
+  # Caches - soft purple
   cache:
-    fill: "#be4bdb"      # Purple
-    stroke: "#9c36b5"
-    text: "#ffffff"
+    fill: "#d0bfff"      # Light purple
+    stroke: "#9775fa"
+    text: "#6741d9"      # Dark purple text
 
-  # External systems (third-party APIs)
+  # External systems - soft gray
   external:
-    fill: "#868e96"      # Gray
-    stroke: "#495057"
-    text: "#ffffff"
+    fill: "#dee2e6"      # Light gray
+    stroke: "#adb5bd"
+    text: "#495057"      # Dark gray text
 
-  # Error paths, DLQ
+  # Error paths, DLQ - soft red
   error:
-    fill: "#fa5252"      # Red
-    stroke: "#e03131"
-    text: "#ffffff"
+    fill: "#ffc9c9"      # Light red
+    stroke: "#ff6b6b"
+    text: "#c92a2a"      # Dark red text
 
-  # Warnings, highlights
+  # Warnings - soft orange
   warning:
-    fill: "#fd7e14"      # Orange
-    stroke: "#e8590c"
-    text: "#ffffff"
+    fill: "#ffd8a8"      # Light orange
+    stroke: "#ff922b"
+    text: "#d9480f"      # Dark orange text
 
 # ============================================================================
 # NODE SHAPES
@@ -176,13 +176,13 @@ subgraphs:
 # ============================================================================
 # Copy these exactly into every diagram
 classDefs: |
-  classDef service fill:#228be6,stroke:#1971c2,color:#fff
-  classDef entry fill:#40c057,stroke:#2f9e44,color:#fff
-  classDef kafka fill:#12b886,stroke:#099268,color:#fff
-  classDef database fill:#fab005,stroke:#f59f00,color:#000
-  classDef cache fill:#be4bdb,stroke:#9c36b5,color:#fff
-  classDef external fill:#868e96,stroke:#495057,color:#fff
-  classDef error fill:#fa5252,stroke:#e03131,color:#fff
+  classDef service fill:#a5d8ff,stroke:#339af0,color:#1864ab
+  classDef entry fill:#b2f2bb,stroke:#51cf66,color:#2b8a3e
+  classDef kafka fill:#96f2d7,stroke:#38d9a9,color:#087f5b
+  classDef database fill:#ffec99,stroke:#fcc419,color:#e67700
+  classDef cache fill:#d0bfff,stroke:#9775fa,color:#6741d9
+  classDef external fill:#dee2e6,stroke:#adb5bd,color:#495057
+  classDef error fill:#ffc9c9,stroke:#ff6b6b,color:#c92a2a
 
 # ============================================================================
 # BEST PRACTICES
