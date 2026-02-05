@@ -15,7 +15,6 @@ Generate professional architectural diagrams through a multi-phase pipeline.
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--output=<name>` | Output filename (without extension) | `flow-diagram` |
-| `--no-tools` | Skip flowlint validation (if not installed) | false |
 | `--keep-deps` | Keep .flow-deps.yaml after completion | false |
 
 ## Output Files
@@ -25,11 +24,11 @@ All files are written to the **current working directory**:
 | File | Phase | Description |
 |------|-------|-------------|
 | `{output}.md` | Phase 2 | **Always created** - the diagram source |
-| `{output}.png` | Phase 3 | Rendered image (if mmdc installed) |
+| `{output}.png` | Phase 3 | Rendered image (if mermaid-cli installed) |
 | `.flow-deps.yaml` | Phase 1 | Intermediate file, deleted on success |
 
 - **Diagram is always generated**, even if validation has issues
-- PNG is generated if `mmdc` (Mermaid CLI) is installed
+- PNG is generated if `@mermaid-js/mermaid-cli` is installed
 - `.flow-deps.yaml` is deleted on success, kept on failure (for debugging)
 - Use `--keep-deps` to always keep the intermediate file
 
@@ -58,7 +57,7 @@ Discovery    →       Generation   →       Validation + Render + Cleanup
 **Key Principle**:
 - Each phase has ONE job
 - **Diagram is ALWAYS generated** (Phase 2)
-- PNG rendered if mmdc installed
+- PNG rendered if mermaid-cli installed
 - Validation issues = warnings, not blockers
 
 ---
@@ -69,26 +68,55 @@ Discovery    →       Generation   →       Validation + Render + Cleanup
 
 **Instructions**: Follow `prompts/phase1-discovery.md`
 
+### ⛔ CRITICAL: NO FULL REPO SEARCHES
+
+```
+╔═══════════════════════════════════════════════════════════════════════╗
+║  🚫 NEVER grep/search/find across the entire repository              ║
+║  🚫 NEVER use glob patterns like **/*.go at repo root                ║
+║  🚫 NEVER read files outside {target_path}/                          ║
+║                                                                        ║
+║  If you are about to search the whole repo, STOP IMMEDIATELY.        ║
+║  This wastes tokens and produces garbage results.                     ║
+╚═══════════════════════════════════════════════════════════════════════╝
+```
+
 ### Critical Rules
 
-1. **NEVER grep/search the entire codebase**
+1. **ONLY search/read within `{target_path}/`** - nowhere else
 2. **Read runbooks/docs FIRST** - they list dependencies explicitly
-3. **Only read files in the target directory**
-4. **Every dependency MUST have source_file and source_line**
-5. **No abbreviations** - use full names
+3. **Every dependency MUST have source_file and source_line**
+4. **No abbreviations** - use full names
+5. **Follow the MANDATORY file checklist below** - do not skip categories
+
+### 📋 MANDATORY File Checklist
+
+You MUST attempt to find and read ALL of these within `{target_path}/`:
+
+| # | Category | Patterns to Search | Extract |
+|---|----------|-------------------|---------|
+| 1 | **Docs** | `README.md`, `RUNBOOK.md`, `docs/*.md` | Description, dependencies |
+| 2 | **Config** | `config/*.yaml`, `*.yaml`, `.env*` | Topics, URLs, DB strings |
+| 3 | **gRPC Clients** | `*client*.go`, `client/*.go` | Outbound gRPC calls |
+| 4 | **HTTP Clients** | `*http*.go`, `*api*.go` | Outbound HTTP calls |
+| 5 | **Consumers** | `*consumer*.go`, `consumer/*.go` | Kafka topics consumed |
+| 6 | **Producers** | `*producer*.go`, `producer/*.go` | Kafka topics produced |
+| 7 | **Proto** | `*.proto`, `proto/*.proto` | Service definitions |
+| 8 | **Repository** | `*repo*.go`, `*repository*.go`, `store/*.go` | DB connections |
+| 9 | **Cache** | `*cache*.go`, `*redis*.go` | Cache connections |
+| 10 | **Handlers** | `*handler*.go`, `*server*.go` | Entry points |
+
+**Report which categories you found files for and which were empty.**
 
 ### Process
 
 1. Confirm target directory path (ask if not provided)
-2. List directory structure
+2. List directory structure: `ls -la {target_path}/`
 3. Read documentation files (README, RUNBOOK, docs/)
 4. Read configuration files (*.yaml, *.json)
-5. Read client files (*_client.go) - outbound gRPC/HTTP
-6. Read consumer files (*_consumer.go) - inbound Kafka
-7. Read producer files (*_producer.go) - outbound Kafka
-8. Read proto files (*.proto) - gRPC definitions
-9. Read repository files (*_repo.go) - database
-10. Write `.flow-deps.yaml` to working directory
+5. **Search within target for each category above**
+6. Read all matching files and extract dependencies
+7. Write `.flow-deps.yaml` to working directory
 
 ### Output
 
@@ -158,6 +186,13 @@ Proceeding to Phase 2...
 3. **No abbreviations** - use full names from .flow-deps.yaml
 4. **Correct arrows** - `==>` sync, `-.->` async
 5. **Quote subgraph titles** - `subgraph id ["Title"]`
+6. **NO NEWLINES IN LABELS** - all node/edge labels must be single-line
+
+```
+❌ WRONG:                        ✅ CORRECT:
+    A[Commit Stage               A[Commit Stage Write]
+    (Write)]
+```
 
 ### Style Reference
 
@@ -277,12 +312,12 @@ npm install -g @mermaid-js/mermaid-cli
 **YOU MUST EXECUTE THIS COMMAND VIA BASH:**
 
 ```bash
-./flow/tools/flowlint/flowlint refine {output}.md .flow-deps.yaml --skip-validate
+./flow/tools/flowlint/flowlint refine {output}.md .flow-deps.yaml
 ```
 
 Or if flowlint is in PATH:
 ```bash
-flowlint refine {output}.md .flow-deps.yaml --skip-validate
+flowlint refine {output}.md .flow-deps.yaml
 ```
 
 **DO NOT SKIP THIS STEP. Actually run the command and check the output.**
@@ -320,7 +355,7 @@ Done.
 
 After editing the diagram, re-run flowlint:
 ```bash
-./flow/tools/flowlint/flowlint refine {output}.md .flow-deps.yaml --skip-validate
+./flow/tools/flowlint/flowlint refine {output}.md .flow-deps.yaml
 ```
 
 #### If still FAIL after rework:
@@ -348,24 +383,20 @@ flow/tools/flowlint/flowlint
 
 If you get "command not found", use the full path relative to the skill directory.
 
-### Skip Validation
+### Step 3.3: Generate PNG (if mermaid-cli available)
 
-If flowlint not available or not built:
-```
-/flow services/ledger/ --no-tools
-```
-
-This skips validation entirely - use with caution.
-
-### Step 3.3: Generate PNG (if mmdc available)
-
-After validation passes, generate a PNG:
+After validation passes, generate a high-resolution PNG:
 
 ```bash
-mmdc -i {output}.md -o {output}.png -b white -w 1920
+npx -p @mermaid-js/mermaid-cli mmdc -i {output}.md -o {output}.png -b white -w 3840 -s 2
 ```
 
-If mmdc is not installed, skip this step and inform the user how to render manually.
+Options:
+- `-w 3840` - 4K width for high resolution
+- `-s 2` - 2x scale factor for crisp text
+- `-b white` - white background
+
+If mermaid-cli is not installed, this will auto-install it via npx. Skip this step if npm/npx is not available.
 
 ### Completion (Success)
 
@@ -379,10 +410,10 @@ Cleaned up: .flow-deps.yaml
 
 Output:
 - {output}.md (diagram source)
-- {output}.png (rendered image, if mmdc available)
+- {output}.png (rendered image, if mermaid-cli available)
 
 If PNG not generated, render manually:
-mmdc -i {output}.md -o {output}.png -b white
+npx -p @mermaid-js/mermaid-cli mmdc -i {output}.md -o {output}.png -b white -w 3840 -s 2
 ```
 
 ---
@@ -395,9 +426,6 @@ mmdc -i {output}.md -o {output}.png -b white
 
 # Custom output name (outputs ledger-arch.md)
 /flow services/ledger/ --output=ledger-arch
-
-# Skip validation (if flowlint not installed)
-/flow services/ledger/ --no-tools
 
 # Keep intermediate dependencies file
 /flow services/ledger/ --keep-deps

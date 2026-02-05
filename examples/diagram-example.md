@@ -208,17 +208,17 @@ All dependencies traced from:
 
 ## Render Commands
 
-Generate PNG (recommended for documentation):
+Generate PNG - high resolution (recommended for documentation):
 ```bash
-mmdc -i diagram.md -o diagram.png -b white -w 1920 -H 1080
+npx -p @mermaid-js/mermaid-cli mmdc -i diagram.md -o diagram.png -b white -w 3840 -s 2
 ```
 
-Generate SVG (for web):
+Generate SVG (for web, scalable):
 ```bash
-mmdc -i diagram.md -o diagram.svg -b white
+npx -p @mermaid-js/mermaid-cli mmdc -i diagram.md -o diagram.svg -b white
 ```
 
 Generate PDF:
 ```bash
-mmdc -i diagram.md -o diagram.pdf -b white
+npx -p @mermaid-js/mermaid-cli mmdc -i diagram.md -o diagram.pdf -b white
 ```

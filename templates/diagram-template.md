@@ -164,9 +164,9 @@ All dependencies traced from:
 ## Render Commands
 
 ```bash
-# PNG (for documentation)
-mmdc -i flow-diagram.md -o flow-diagram.png -b white -w 1920 -H 1080
+# PNG - high resolution (for documentation)
+npx -p @mermaid-js/mermaid-cli mmdc -i flow-diagram.md -o flow-diagram.png -b white -w 3840 -s 2
 
-# SVG (for web)
-mmdc -i flow-diagram.md -o flow-diagram.svg -b white
+# SVG (for web, scalable)
+npx -p @mermaid-js/mermaid-cli mmdc -i flow-diagram.md -o flow-diagram.svg -b white
 ```

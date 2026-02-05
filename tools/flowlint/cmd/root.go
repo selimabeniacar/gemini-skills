@@ -14,7 +14,7 @@ It ensures diagrams follow consistent styling, proper arrow usage,
 and complete coverage of dependencies.
 
 Commands:
-  validate  - Check Mermaid syntax with mmdc
+  validate  - Check Mermaid syntax with mermaid-cli
   lint      - Check style guide compliance and auto-fix
   check     - Verify diagram matches dependencies.yaml
   refine    - Run full refinement pipeline`,

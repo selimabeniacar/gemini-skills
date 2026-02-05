@@ -13,12 +13,12 @@ import (
 
 var validateCmd = &cobra.Command{
 	Use:   "validate <diagram.md>",
-	Short: "Validate Mermaid syntax using mmdc",
+	Short: "Validate Mermaid syntax using mermaid-cli",
 	Long: `Extracts the Mermaid code block from a markdown file and
-validates it using the Mermaid CLI (mmdc).
+validates it using @mermaid-js/mermaid-cli via npx.
 
-Requires mmdc to be installed:
-  npm install -g @mermaid-js/mermaid-cli
+Requires npx (comes with Node.js). The mermaid-cli package will be
+auto-installed if not present.
 
 Returns exit code 0 if valid, 1 if invalid.`,
 	Args: cobra.ExactArgs(1),
@@ -54,22 +54,15 @@ func runValidate(cmd *cobra.Command, args []string) error {
 
 	outputFile := filepath.Join(tmpDir, "diagram.svg")
 
-	// Check if mmdc is available
-	mmdc, err := exec.LookPath("mmdc")
+	// Use npx to run mermaid-cli (auto-installs if needed)
+	npx, err := exec.LookPath("npx")
 	if err != nil {
-		// Try npx
-		npx, npxErr := exec.LookPath("npx")
-		if npxErr != nil {
-			return fmt.Errorf("mmdc not found. Install with: npm install -g @mermaid-js/mermaid-cli")
-		}
-		mmdc = npx
-		args = []string{"mmdc", "-i", mermaidFile, "-o", outputFile, "-q"}
-	} else {
-		args = []string{"-i", mermaidFile, "-o", outputFile, "-q"}
+		return fmt.Errorf("npx not found. Please install Node.js")
 	}
 
-	// Run mmdc
-	execCmd := exec.Command(mmdc, args...)
+	// Run: npx -p @mermaid-js/mermaid-cli mmdc -i <file> -o <output> -q
+	execArgs := []string{"-p", "@mermaid-js/mermaid-cli", "mmdc", "-i", mermaidFile, "-o", outputFile, "-q"}
+	execCmd := exec.Command(npx, execArgs...)
 	output, err := execCmd.CombinedOutput()
 	if err != nil {
 		// Parse error output for helpful messages
@@ -81,7 +74,7 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Println("❌ Validation failed:")
 		fmt.Println(errMsg)
-		return fmt.Errorf("mmdc validation failed")
+		return fmt.Errorf("mermaid-cli validation failed")
 	}
 
 	fmt.Println("✓ Mermaid syntax is valid")

@@ -4,23 +4,71 @@
 
 Extract ALL dependencies from the target service directory into a structured `dependencies.yaml` file.
 
+---
+
+## ⛔ CRITICAL: NO FULL REPO SEARCHES
+
+**STOP. READ THIS BEFORE DOING ANYTHING.**
+
+```
+╔═══════════════════════════════════════════════════════════════════════╗
+║  🚫 NEVER grep/search/find across the entire repository              ║
+║  🚫 NEVER use glob patterns like **/*.go or **/*.py at repo root     ║
+║  🚫 NEVER read files outside the target directory                     ║
+║                                                                        ║
+║  ✅ ONLY read files within: {target_path}/                            ║
+║  ✅ ONLY search within: {target_path}/                                ║
+╚═══════════════════════════════════════════════════════════════════════╝
+```
+
+If you catch yourself about to search the whole repo, **STOP IMMEDIATELY**.
+
+---
+
 ## Critical Rules
 
-### DO NOT
+### ❌ DO NOT
 
-- **DO NOT** search/grep the entire codebase
+- **DO NOT** run `grep -r` or `rg` at repo root
+- **DO NOT** run `find . -name "*.go"` at repo root
+- **DO NOT** search for patterns like `**/*.proto` without a target path
 - **DO NOT** infer or guess dependencies
 - **DO NOT** abbreviate names
 - **DO NOT** skip source file references
-- **DO NOT** read files outside the target directory (unless following an import)
+- **DO NOT** read files outside the target directory
 
-### DO
+### ✅ DO
 
 - **DO** read runbooks/docs FIRST
-- **DO** read ONLY files in the target directory
+- **DO** read ONLY files in `{target_path}/`
+- **DO** search ONLY within `{target_path}/`
 - **DO** cite source file and line for EVERY dependency
 - **DO** use full names (Title Case for services, lowercase for topics)
 - **DO** ask for the directory path if not provided
+- **DO** follow the mandatory file checklist below
+
+---
+
+## 📋 MANDATORY FILE CHECKLIST
+
+You MUST attempt to read ALL of these file patterns within `{target_path}/`. Do not skip any category.
+
+| Category | File Patterns | What to Extract |
+|----------|---------------|-----------------|
+| **1. Docs** | `README.md`, `RUNBOOK.md`, `docs/*.md` | Service description, listed dependencies |
+| **2. Config** | `config/*.yaml`, `*.yaml`, `.env.example` | Topic names, DB strings, service URLs |
+| **3. gRPC Clients** | `*client*.go`, `*client*.py`, `client/*.go` | Outbound gRPC calls |
+| **4. HTTP Clients** | `*client*.go`, `*http*.go`, `api/*.go` | Outbound HTTP calls |
+| **5. Consumers** | `*consumer*.go`, `*consumer*.py`, `consumer/*.go` | Kafka topics consumed |
+| **6. Producers** | `*producer*.go`, `*producer*.py`, `producer/*.go` | Kafka topics produced |
+| **7. Proto** | `*.proto`, `proto/*.proto` | gRPC service definitions |
+| **8. Repository** | `*repo*.go`, `*repository*.go`, `dal/*.go`, `store/*.go` | Database connections |
+| **9. Cache** | `*cache*.go`, `*redis*.go` | Cache connections |
+| **10. Handlers** | `*handler*.go`, `*server*.go`, `api/*.go` | Entry points, who calls this service |
+
+**After reading files, report which categories had files and which were empty.**
+
+---
 
 ## Step-by-Step Process
 

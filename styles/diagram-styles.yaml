@@ -209,3 +209,5 @@ anti_patterns:
   - "Tangled arrow spaghetti"
   - "Orphan nodes with no connections"
   - "Inconsistent colors for same type"
+  - "NEWLINES IN LABELS - all labels must be single-line"
+  - "Line breaks in node text - shorten instead of wrapping"

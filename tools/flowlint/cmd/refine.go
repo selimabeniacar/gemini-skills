@@ -10,8 +10,7 @@ import (
 )
 
 var (
-	refineOutput       string
-	refineSkipValidate bool
+	refineOutput string
 )
 
 var refineCmd = &cobra.Command{
@@ -19,11 +18,11 @@ var refineCmd = &cobra.Command{
 	Short: "Run full refinement pipeline",
 	Long: `Runs the complete refinement pipeline:
 
-1. Validate - Check Mermaid syntax with mmdc
+1. Validate - Check Mermaid syntax with mermaid-cli
 2. Lint - Check style guide and auto-fix
 3. Check - Verify completeness against dependencies
 
-Use --skip-validate if mmdc is not installed.
+Requires npx (Node.js) for syntax validation.
 Use --output to specify output file (defaults to overwriting input).`,
 	Args: cobra.ExactArgs(2),
 	RunE: runRefine,
@@ -31,7 +30,6 @@ Use --output to specify output file (defaults to overwriting input).`,
 
 func init() {
 	refineCmd.Flags().StringVarP(&refineOutput, "output", "o", "", "Output file for refined diagram")
-	refineCmd.Flags().BoolVar(&refineSkipValidate, "skip-validate", false, "Skip mmdc validation")
 }
 
 func runRefine(cmd *cobra.Command, args []string) error {
@@ -54,16 +52,11 @@ func runRefine(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to read dependencies: %w", err)
 	}
 
-	// Step 1: Validate (optional)
+	// Step 1: Validate (required)
 	fmt.Println("Step 1: Syntax Validation")
 	fmt.Println("─────────────────────────")
-	if refineSkipValidate {
-		fmt.Println("⏭  Skipped (--skip-validate)")
-	} else {
-		// Run validation
-		if err := runValidate(cmd, []string{diagramPath}); err != nil {
-			return fmt.Errorf("validation failed: %w", err)
-		}
+	if err := runValidate(cmd, []string{diagramPath}); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
 	}
 	fmt.Println()
 

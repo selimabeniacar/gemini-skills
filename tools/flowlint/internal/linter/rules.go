@@ -38,6 +38,7 @@ func Lint(diagram *parser.Diagram) []Issue {
 	issues = append(issues, checkOrphanNodes(diagram)...)
 	issues = append(issues, checkAbbreviations(diagram)...)
 	issues = append(issues, checkDuplicateNodes(diagram)...)
+	issues = append(issues, checkNewlinesInLabels(diagram)...)
 
 	return issues
 }
@@ -197,4 +198,72 @@ func checkDuplicateNodes(diagram *parser.Diagram) []Issue {
 	// The parser already handles this by using a map, so duplicates would be overwritten
 	// This is more of a sanity check
 	return []Issue{}
+}
+
+// checkNewlinesInLabels ensures no node labels contain newlines
+func checkNewlinesInLabels(diagram *parser.Diagram) []Issue {
+	issues := []Issue{}
+
+	for _, node := range diagram.Nodes {
+		if strings.Contains(node.Label, "\n") {
+			// Create fixed label by replacing newlines with spaces
+			fixedLabel := strings.ReplaceAll(node.Label, "\n", " ")
+			// Collapse multiple spaces
+			fixedLabel = regexp.MustCompile(`\s+`).ReplaceAllString(fixedLabel, " ")
+			fixedLabel = strings.TrimSpace(fixedLabel)
+
+			issues = append(issues, Issue{
+				Severity:   SeverityError,
+				Message:    fmt.Sprintf("Node '%s' contains newline in label", node.ID),
+				Line:       node.Line,
+				Context:    node.Label,
+				Suggestion: fmt.Sprintf("Change to single line: %s[%s]", node.ID, fixedLabel),
+				Fixable:    true,
+				FixType:    "fix_newline",
+				FixData:    map[string]string{"id": node.ID, "old": node.Label, "new": fixedLabel},
+			})
+		}
+	}
+
+	// Also check edge labels
+	for _, edge := range diagram.Edges {
+		if strings.Contains(edge.Label, "\n") {
+			fixedLabel := strings.ReplaceAll(edge.Label, "\n", " ")
+			fixedLabel = regexp.MustCompile(`\s+`).ReplaceAllString(fixedLabel, " ")
+			fixedLabel = strings.TrimSpace(fixedLabel)
+
+			issues = append(issues, Issue{
+				Severity:   SeverityError,
+				Message:    fmt.Sprintf("Edge label contains newline: %s -> %s", edge.From, edge.To),
+				Line:       edge.Line,
+				Context:    edge.Label,
+				Suggestion: fmt.Sprintf("Change to single line: |%s|", fixedLabel),
+				Fixable:    true,
+				FixType:    "fix_edge_newline",
+				FixData:    map[string]string{"from": edge.From, "to": edge.To, "old": edge.Label, "new": fixedLabel},
+			})
+		}
+	}
+
+	// Check subgraph titles
+	for _, sg := range diagram.Subgraphs {
+		if strings.Contains(sg.Title, "\n") {
+			fixedTitle := strings.ReplaceAll(sg.Title, "\n", " ")
+			fixedTitle = regexp.MustCompile(`\s+`).ReplaceAllString(fixedTitle, " ")
+			fixedTitle = strings.TrimSpace(fixedTitle)
+
+			issues = append(issues, Issue{
+				Severity:   SeverityError,
+				Message:    fmt.Sprintf("Subgraph '%s' title contains newline", sg.ID),
+				Line:       sg.Line,
+				Context:    sg.Title,
+				Suggestion: fmt.Sprintf("Change to single line: subgraph %s [\"%s\"]", sg.ID, fixedTitle),
+				Fixable:    true,
+				FixType:    "fix_subgraph_newline",
+				FixData:    map[string]string{"id": sg.ID, "old": sg.Title, "new": fixedTitle},
+			})
+		}
+	}
+
+	return issues
 }

@@ -163,7 +163,21 @@ flowchart TD
 | External | Title Case | `Stripe API` |
 | Method | PascalCase | `ProcessPayment` |
 
-**NO ABBREVIATIONS.** Use full names always.
+**CRITICAL LABEL RULES:**
+- **NO NEWLINES** - all labels must be single-line
+- **NO ABBREVIATIONS** - use full names always
+- **NO LINE BREAKS** - do not split labels across lines
+
+```
+❌ WRONG:
+    A[Commit Stage
+    (Write)]
+
+✅ CORRECT:
+    A[Commit Stage Write]
+```
+
+If a label is too long, shorten it - do NOT add newlines.
 
 ### Step 5: Arrow Rules
 
