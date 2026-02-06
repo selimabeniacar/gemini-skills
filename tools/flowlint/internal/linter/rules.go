@@ -39,6 +39,7 @@ func Lint(diagram *parser.Diagram) []Issue {
 	issues = append(issues, checkAbbreviations(diagram)...)
 	issues = append(issues, checkDuplicateNodes(diagram)...)
 	issues = append(issues, checkNewlinesInLabels(diagram)...)
+	issues = append(issues, checkComplexity(diagram)...)
 
 	return issues
 }
@@ -198,6 +199,96 @@ func checkDuplicateNodes(diagram *parser.Diagram) []Issue {
 	// The parser already handles this by using a map, so duplicates would be overwritten
 	// This is more of a sanity check
 	return []Issue{}
+}
+
+// checkComplexity detects potential spaghetti diagrams
+func checkComplexity(diagram *parser.Diagram) []Issue {
+	issues := []Issue{}
+
+	nodeCount := len(diagram.Nodes)
+	edgeCount := len(diagram.Edges)
+
+	// Count connections per node (hub detection)
+	connectionCount := make(map[string]int)
+	for _, edge := range diagram.Edges {
+		connectionCount[edge.From]++
+		connectionCount[edge.To]++
+	}
+
+	// Find max connections (potential hub)
+	maxConnections := 0
+	hubNode := ""
+	for nodeID, count := range connectionCount {
+		if count > maxConnections {
+			maxConnections = count
+			hubNode = nodeID
+		}
+	}
+
+	// Count nodes with multiple outgoing edges (fan-out)
+	fanOutCount := 0
+	outgoing := make(map[string]int)
+	for _, edge := range diagram.Edges {
+		outgoing[edge.From]++
+	}
+	for _, count := range outgoing {
+		if count > 3 {
+			fanOutCount++
+		}
+	}
+
+	// Detect potential spaghetti patterns
+	isSpaghetti := false
+	reasons := []string{}
+
+	// Rule 1: Too many nodes without subgraphs
+	if nodeCount > 10 && len(diagram.Subgraphs) < 2 {
+		isSpaghetti = true
+		reasons = append(reasons, fmt.Sprintf("%d nodes without grouping", nodeCount))
+	}
+
+	// Rule 2: High edge-to-node ratio (dense connections)
+	if nodeCount > 0 {
+		edgeRatio := float64(edgeCount) / float64(nodeCount)
+		if edgeRatio > 2.0 {
+			isSpaghetti = true
+			reasons = append(reasons, fmt.Sprintf("high edge density (%.1f edges per node)", edgeRatio))
+		}
+	}
+
+	// Rule 3: Multiple nodes with high fan-out (not hub-and-spoke)
+	if fanOutCount > 2 {
+		isSpaghetti = true
+		reasons = append(reasons, fmt.Sprintf("%d nodes with 4+ outgoing edges", fanOutCount))
+	}
+
+	// Rule 4: No clear hub pattern when complex
+	if nodeCount > 8 && maxConnections < nodeCount/2 {
+		isSpaghetti = true
+		reasons = append(reasons, "no clear hub node - consider linear pipeline")
+	}
+
+	if isSpaghetti {
+		reasonStr := strings.Join(reasons, ", ")
+		issues = append(issues, Issue{
+			Severity:   SeverityWarning,
+			Message:    fmt.Sprintf("Diagram may be spaghetti: %s", reasonStr),
+			Suggestion: "Consider using linear pipeline layout with target service as hub",
+			Fixable:    false,
+		})
+
+		// Add specific advice
+		if hubNode != "" && maxConnections > 3 {
+			issues = append(issues, Issue{
+				Severity:   SeverityWarning,
+				Message:    fmt.Sprintf("Node '%s' has %d connections - good hub candidate", hubNode, maxConnections),
+				Suggestion: "Restructure diagram with this node as central hub",
+				Fixable:    false,
+			})
+		}
+	}
+
+	return issues
 }
 
 // checkNewlinesInLabels ensures no node labels contain newlines

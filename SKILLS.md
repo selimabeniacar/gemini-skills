@@ -222,6 +222,32 @@ classDef external fill:#dee2e6,stroke:#adb5bd,color:#495057
 | Async | `-.->` | Kafka, queues |
 | Internal | `-->` | Function calls |
 
+### Layout Strategy: When to Use Linear Pipeline
+
+**If the diagram looks messy (spaghetti arrows, overlapping nodes), fall back to a LINEAR VERTICAL PIPELINE.**
+
+Signs you need linear layout:
+- More than 8 total dependencies
+- Multiple nodes connecting to the same targets
+- Arrows crossing each other
+- Hard to follow the flow visually
+
+**Linear Pipeline Layout** (use when complex):
+```mermaid
+flowchart TD
+    E[Entry Point] ==> T[Target Service]
+    T ==> D1[Dependency 1]
+    T ==> D2[Dependency 2]
+    T ==> D3[Dependency 3]
+    T ==> DB[(Database)]
+    T -.-> K1[(kafka.topic.1)]
+    K2[(kafka.topic.2)] -.-> T
+```
+
+This creates a clean star/hub pattern with the target service in the center.
+
+**DO NOT** try to show every individual connection when there are many - group them or simplify.
+
 ### Layout Rules for Complex Diagrams
 
 **If more than 5 dependencies, use horizontal subgraphs:**

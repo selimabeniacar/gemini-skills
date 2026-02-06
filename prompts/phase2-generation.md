@@ -198,29 +198,13 @@ If a label is too long, shorten it - do NOT add newlines.
 3. **Group by type**: All Kafka topics together, all databases together
 4. **Single service per subgraph** for clarity
 
-### Step 6.5: Layout Rules for Complex Diagrams
+### Step 6.5: Layout Strategy - Choose the Right Approach
 
-**CRITICAL: When a subgraph has more than 3 nodes, use `direction LR` to spread them horizontally.**
+**IMPORTANT: Evaluate complexity BEFORE drawing. Choose the appropriate layout.**
 
-```mermaid
-subgraph deps ["Dependencies"]
-    direction LR
-    D1[Service A]
-    D2[Service B]
-    D3[Service C]
-    D4[Service D]
-end
-```
+#### Option A: Grouped Layout (Default - for moderate complexity)
 
-**Key layout principles:**
-
-1. **Use `direction LR` inside subgraphs** - spreads nodes horizontally instead of stacking vertically
-2. **Group similar dependencies** - all gRPC services together, all databases together
-3. **Connect to subgraph, not individual nodes** when there are many dependencies
-4. **Maximum 6 nodes per row** - split into multiple subgraphs if needed
-5. **Keep the main flow vertical (TD)**, but spread groups horizontally
-
-**Example for 10+ dependencies:**
+Use when: 3-8 dependencies, clear groupings
 
 ```mermaid
 flowchart TD
@@ -228,26 +212,65 @@ flowchart TD
         T1[Handler]
     end
 
-    subgraph grpc-deps ["gRPC Services"]
+    subgraph deps ["Dependencies"]
         direction LR
         D1[Service A]
         D2[Service B]
         D3[Service C]
-        D4[Service D]
     end
 
-    subgraph data-deps ["Data Stores"]
+    subgraph data ["Data Stores"]
         direction LR
         DB1[(Postgres)]
-        DB2[(Redis)]
-        DB3[(Mongo)]
+        C1(Redis)
     end
 
-    T1 ==> grpc-deps
-    T1 ==> data-deps
+    T1 ==> deps
+    T1 ==> data
 ```
 
-Use invisible links (`---`) to force horizontal layout within subgraphs if needed.
+#### Option B: Linear Pipeline (Fallback - for high complexity)
+
+**USE THIS when the diagram looks messy or has 8+ dependencies.**
+
+Signs you need linear layout:
+- Arrows would cross each other
+- Too many nodes to fit horizontally
+- Multiple many-to-many relationships
+- The grouped layout looks like spaghetti
+
+```mermaid
+flowchart TD
+    E[API Gateway] ==> T[My Service]
+
+    T ==> D1[Auth Service]
+    T ==> D2[User Service]
+    T ==> D3[Payment Service]
+    T ==> D4[Notification Service]
+    T ==> D5[Audit Service]
+
+    T ==> DB[(PostgreSQL)]
+    T ==> C1(Redis Cache)
+
+    T -.-> K1[(events.created)]
+    K2[(orders.completed)] -.-> T
+```
+
+This creates a **hub-and-spoke** pattern:
+- Target service is the hub
+- All dependencies spoke out from it
+- Clean, readable, no crossing arrows
+
+#### Decision Guide
+
+| Dependencies | Kafka Topics | Layout to Use |
+|--------------|--------------|---------------|
+| 1-4 | 0-2 | Grouped (Option A) |
+| 5-8 | 2-4 | Grouped with `direction LR` |
+| 8+ | 4+ | **Linear Pipeline (Option B)** |
+| Any | Any with crossing arrows | **Linear Pipeline (Option B)** |
+
+**When in doubt, use Linear Pipeline. Clarity > aesthetics.**
 
 ### Step 7: Write Complete Markdown File
 

@@ -185,6 +185,34 @@ classDefs: |
   classDef error fill:#ffc9c9,stroke:#ff6b6b,color:#c92a2a
 
 # ============================================================================
+# LAYOUT STRATEGIES
+# ============================================================================
+layout_strategies:
+  # Default: Grouped layout with horizontal subgraphs
+  grouped:
+    use_when: "3-8 dependencies, clear groupings"
+    description: "Group similar nodes in subgraphs with direction LR"
+
+  # Fallback: Linear pipeline for complex diagrams
+  linear_pipeline:
+    use_when: "8+ dependencies OR arrows would cross"
+    description: "Hub-and-spoke pattern with target service in center"
+    example: |
+      flowchart TD
+          Entry ==> Target
+          Target ==> Dep1
+          Target ==> Dep2
+          Target ==> Dep3
+          Target ==> Database
+          Target -.-> KafkaTopic
+
+  # Decision thresholds
+  thresholds:
+    use_grouped_max_deps: 8
+    use_grouped_max_kafka: 4
+    force_linear_on_crossing: true
+
+# ============================================================================
 # BEST PRACTICES
 # ============================================================================
 best_practices:
@@ -195,6 +223,7 @@ best_practices:
   - "All nodes must be connected (no orphans)"
   - "Legend required in every diagram"
   - "Source file references in summary table"
+  - "When in doubt, use linear pipeline layout for clarity"
 
 # ============================================================================
 # ANTI-PATTERNS (DO NOT DO)
