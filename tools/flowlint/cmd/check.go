@@ -19,8 +19,9 @@ Checks:
 - All sync dependencies appear as nodes
 - All async dependencies (Kafka topics) appear
 - All databases appear
+- All caches appear
 - All external systems appear
-- Arrow directions match dependency directions`,
+- Internal steps (if present) appear as nodes`,
 	Args: cobra.ExactArgs(2),
 	RunE: runCheck,
 }
@@ -66,61 +67,100 @@ func runCheck(cmd *cobra.Command, args []string) error {
 	found := 0
 	total := 0
 
-	// Check sync dependencies
-	fmt.Println("Sync Dependencies:")
-	for _, dep := range deps.Dependencies.Sync {
-		total++
-		if diagram.HasNodeWithLabel(dep.Name) {
-			fmt.Printf("  ✓ %s\n", dep.Name)
-			found++
-		} else {
-			fmt.Printf("  ✗ %s (MISSING)\n", dep.Name)
-			missing = append(missing, fmt.Sprintf("%s (sync, from %s:%d)", dep.Name, dep.SourceFile, dep.SourceLine))
-		}
-	}
+	for _, svc := range deps.Services {
+		fmt.Printf("Service: %s\n", svc.Name)
+		fmt.Println(strings.Repeat("-", 40))
 
-	// Check async dependencies (Kafka topics)
-	fmt.Println("\nKafka Topics:")
-	for _, dep := range deps.Dependencies.Async {
-		total++
-		if diagram.HasNodeWithLabel(dep.Name) {
-			fmt.Printf("  ✓ %s (%s)\n", dep.Name, dep.Direction)
-			found++
-		} else {
-			fmt.Printf("  ✗ %s (%s) (MISSING)\n", dep.Name, dep.Direction)
-			missing = append(missing, fmt.Sprintf("%s (kafka %s, from %s:%d)", dep.Name, dep.Direction, dep.SourceFile, dep.SourceLine))
+		// Check sync dependencies
+		fmt.Println("  Sync Dependencies:")
+		for _, dep := range svc.Dependencies.Sync {
+			total++
+			if diagram.HasNodeWithLabel(dep.Name) {
+				fmt.Printf("    ✓ %s\n", dep.Name)
+				found++
+			} else {
+				fmt.Printf("    ✗ %s (MISSING)\n", dep.Name)
+				missing = append(missing, fmt.Sprintf("%s > %s (sync, from %s:%d)", svc.Name, dep.Name, dep.SourceFile, dep.SourceLine))
+			}
 		}
-	}
 
-	// Check external systems
-	fmt.Println("\nExternal Systems:")
-	for _, ext := range deps.External {
-		total++
-		if diagram.HasNodeWithLabel(ext.Name) {
-			fmt.Printf("  ✓ %s\n", ext.Name)
-			found++
-		} else {
-			fmt.Printf("  ✗ %s (MISSING)\n", ext.Name)
-			missing = append(missing, fmt.Sprintf("%s (external, from %s:%d)", ext.Name, ext.SourceFile, ext.SourceLine))
+		// Check async dependencies (Kafka topics)
+		fmt.Println("  Kafka Topics:")
+		for _, dep := range svc.Dependencies.Async {
+			total++
+			if diagram.HasNodeWithLabel(dep.Name) {
+				fmt.Printf("    ✓ %s (%s)\n", dep.Name, dep.Direction)
+				found++
+			} else {
+				fmt.Printf("    ✗ %s (%s) (MISSING)\n", dep.Name, dep.Direction)
+				missing = append(missing, fmt.Sprintf("%s > %s (kafka %s, from %s:%d)", svc.Name, dep.Name, dep.Direction, dep.SourceFile, dep.SourceLine))
+			}
 		}
-	}
 
-	// Check caches
-	fmt.Println("\nCaches:")
-	for _, cache := range deps.Caches {
-		total++
-		if diagram.HasNodeWithLabel(cache.Name) {
-			fmt.Printf("  ✓ %s\n", cache.Name)
-			found++
-		} else {
-			fmt.Printf("  ✗ %s (MISSING)\n", cache.Name)
-			missing = append(missing, fmt.Sprintf("%s (cache, from %s:%d)", cache.Name, cache.SourceFile, cache.SourceLine))
+		// Check databases
+		fmt.Println("  Databases:")
+		for _, db := range svc.Databases {
+			total++
+			if diagram.HasNodeWithLabel(db.Name) {
+				fmt.Printf("    ✓ %s\n", db.Name)
+				found++
+			} else {
+				fmt.Printf("    ✗ %s (MISSING)\n", db.Name)
+				missing = append(missing, fmt.Sprintf("%s > %s (database, from %s:%d)", svc.Name, db.Name, db.SourceFile, db.SourceLine))
+			}
 		}
+
+		// Check caches
+		fmt.Println("  Caches:")
+		for _, cache := range svc.Caches {
+			total++
+			if diagram.HasNodeWithLabel(cache.Name) {
+				fmt.Printf("    ✓ %s\n", cache.Name)
+				found++
+			} else {
+				fmt.Printf("    ✗ %s (MISSING)\n", cache.Name)
+				missing = append(missing, fmt.Sprintf("%s > %s (cache, from %s:%d)", svc.Name, cache.Name, cache.SourceFile, cache.SourceLine))
+			}
+		}
+
+		// Check external systems
+		fmt.Println("  External Systems:")
+		for _, ext := range svc.External {
+			total++
+			if diagram.HasNodeWithLabel(ext.Name) {
+				fmt.Printf("    ✓ %s\n", ext.Name)
+				found++
+			} else {
+				fmt.Printf("    ✗ %s (MISSING)\n", ext.Name)
+				missing = append(missing, fmt.Sprintf("%s > %s (external, from %s:%d)", svc.Name, ext.Name, ext.SourceFile, ext.SourceLine))
+			}
+		}
+
+		// Check internal steps (if present)
+		if len(svc.InternalSteps) > 0 {
+			fmt.Println("  Internal Steps:")
+			for _, step := range svc.InternalSteps {
+				total++
+				if diagram.HasNodeWithLabel(step.Name) {
+					fmt.Printf("    ✓ %s\n", step.Name)
+					found++
+				} else {
+					fmt.Printf("    ✗ %s (MISSING)\n", step.Name)
+					missing = append(missing, fmt.Sprintf("%s > %s (internal step)", svc.Name, step.Name))
+				}
+			}
+		}
+
+		fmt.Println()
 	}
 
 	// Summary
-	fmt.Println("\n" + strings.Repeat("=", 50))
-	fmt.Printf("Coverage: %d/%d (%.0f%%)\n", found, total, float64(found)/float64(total)*100)
+	fmt.Println(strings.Repeat("=", 50))
+	if total > 0 {
+		fmt.Printf("Coverage: %d/%d (%.0f%%)\n", found, total, float64(found)/float64(total)*100)
+	} else {
+		fmt.Println("Coverage: 0/0 (no dependencies)")
+	}
 
 	if len(missing) > 0 {
 		fmt.Println("\nMissing items:")

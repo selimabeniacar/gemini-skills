@@ -1,135 +1,76 @@
-version: "1.0"
 generated: "2024-01-15T14:30:22Z"
-target_service: "ledger-service"
-target_path: "services/ledger/"
-
-documentation:
-  runbook: "services/ledger/docs/RUNBOOK.md"
-  architecture: "services/ledger/docs/architecture.md"
-  readme: "services/ledger/README.md"
-  notes: "Core financial service responsible for all transaction records and balance management"
-
-service:
-  name: "Ledger Service"
-  description: "Manages financial transactions, account balances, and audit trails for the platform"
-  entrypoints:
-    - type: "grpc"
-      name: "LedgerService"
-      proto: "proto/ledger.proto"
-      methods:
-        - "CreateTransaction"
-        - "GetBalance"
-        - "ListTransactions"
-        - "GetTransactionHistory"
-    - type: "http"
-      path: "/api/v1/ledger"
-      methods:
-        - "GET /health"
-        - "POST /webhook/stripe"
-
-dependencies:
-  sync:
-    - name: "Payment Service"
-      type: "grpc"
-      proto: "PaymentService"
-      methods_called:
-        - "ProcessPayment"
-        - "RefundPayment"
-        - "GetPaymentStatus"
-      source_file: "internal/client/payment_client.go"
-      source_line: 45
-      timeout: "5s"
-      retry: true
-      circuit_breaker: true
-
-    - name: "Account Service"
-      type: "grpc"
-      proto: "AccountService"
-      methods_called:
-        - "GetAccount"
-        - "ValidateAccount"
-      source_file: "internal/client/account_client.go"
-      source_line: 32
-      timeout: "3s"
-      retry: true
-      circuit_breaker: false
-
-    - name: "PostgreSQL"
-      type: "database"
-      connection: "ledger_db"
-      operations:
-        - "read"
-        - "write"
-      source_file: "internal/repository/ledger_repo.go"
-      source_line: 12
-
-  async:
-    - name: "order.completed"
-      type: "kafka"
-      direction: "consume"
-      consumer_group: "ledger-order-consumer"
-      dlq: true
-      dlq_topic: "order.completed.dlq"
-      source_file: "internal/consumer/order_consumer.go"
-      source_line: 27
-
-    - name: "payment.refunded"
-      type: "kafka"
-      direction: "consume"
-      consumer_group: "ledger-refund-consumer"
-      dlq: true
-      dlq_topic: "payment.refunded.dlq"
-      source_file: "internal/consumer/refund_consumer.go"
-      source_line: 15
-
-    - name: "ledger.transaction.created"
-      type: "kafka"
-      direction: "produce"
-      source_file: "internal/producer/transaction_producer.go"
-      source_line: 34
-
-    - name: "ledger.balance.updated"
-      type: "kafka"
-      direction: "produce"
-      source_file: "internal/producer/balance_producer.go"
-      source_line: 22
-
-callers:
-  - name: "Order Service"
-    type: "grpc"
-    methods_called:
-      - "CreateTransaction"
-      - "GetBalance"
-    source: "from runbook"
-
-  - name: "Reporting Service"
-    type: "grpc"
-    methods_called:
-      - "ListTransactions"
-      - "GetTransactionHistory"
-    source: "from proto import in services/reporting/"
-
-  - name: "Admin Dashboard"
-    type: "http"
-    methods_called:
-      - "GET /api/v1/ledger/transactions"
-    source: "from runbook"
-
-external:
-  - name: "Stripe API"
-    type: "https"
-    purpose: "Payment webhook verification and refund processing"
-    source_file: "internal/webhook/stripe_handler.go"
-    source_line: 56
-
-  - name: "Audit Service"
-    type: "grpc"
-    purpose: "Compliance and audit logging"
-    source_file: "internal/audit/client.go"
-    source_line: 18
-
-caches:
-  - name: "Redis"
-    purpose: "Balance cache for fast reads, rate limiting"
-    source_file: "internal/cache/balance_cache.go"
-    source_line: 15
+services:
+  - name: "Ledger Service"
+    target_path: "services/ledger/"
+    description: "Manages financial transactions, account balances, and audit trails for the platform"
+    documentation:
+      runbook: "services/ledger/docs/RUNBOOK.md"
+      architecture: "services/ledger/docs/architecture.md"
+      notes: "Core financial service responsible for all transaction records and balance management"
+    entrypoints:
+      - type: "grpc"
+        name: "LedgerService"
+        methods:
+          - "CreateTransaction"
+          - "GetBalance"
+          - "ListTransactions"
+          - "GetTransactionHistory"
+      - type: "http"
+        name: "/api/v1/ledger"
+        methods:
+          - "GET /health"
+          - "POST /webhook/stripe"
+    dependencies:
+      sync:
+        - name: "Payment Service"
+          type: "grpc"
+          source_file: "internal/client/payment_client.go"
+          source_line: 45
+        - name: "Account Service"
+          type: "grpc"
+          source_file: "internal/client/account_client.go"
+          source_line: 32
+      async:
+        - name: "order.completed"
+          direction: "consume"
+          source_file: "internal/consumer/order_consumer.go"
+          source_line: 27
+        - name: "payment.refunded"
+          direction: "consume"
+          source_file: "internal/consumer/refund_consumer.go"
+          source_line: 15
+        - name: "ledger.transaction.created"
+          direction: "produce"
+          source_file: "internal/producer/transaction_producer.go"
+          source_line: 34
+        - name: "ledger.balance.updated"
+          direction: "produce"
+          source_file: "internal/producer/balance_producer.go"
+          source_line: 22
+    databases:
+      - name: "PostgreSQL"
+        source_file: "internal/repository/ledger_repo.go"
+        source_line: 12
+    caches:
+      - name: "Redis"
+        purpose: "Balance cache for fast reads, rate limiting"
+        source_file: "internal/cache/balance_cache.go"
+        source_line: 15
+    external:
+      - name: "Stripe API"
+        type: "https"
+        source_file: "internal/webhook/stripe_handler.go"
+        source_line: 56
+      - name: "Audit Service"
+        type: "grpc"
+        source_file: "internal/audit/client.go"
+        source_line: 18
+    internal_steps:
+      - name: "Validate Request"
+        description: "Auth and schema validation"
+      - name: "Load Account"
+        description: "Fetch account from DB + cache"
+      - name: "Process Transaction"
+        description: "Execute business logic, call payment service"
+      - name: "Commit"
+        description: "Write to DB, publish event"

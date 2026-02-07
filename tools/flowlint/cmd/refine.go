@@ -155,34 +155,50 @@ func runRefine(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func checkCompleteness(diagram *parser.Diagram, deps *parser.Dependencies) []string {
+func checkCompleteness(diagram *parser.Diagram, deps *parser.DepsFile) []string {
 	missing := []string{}
 
-	// Check sync dependencies
-	for _, dep := range deps.Dependencies.Sync {
-		if !diagram.HasNodeWithLabel(dep.Name) {
-			missing = append(missing, fmt.Sprintf("%s (sync)", dep.Name))
+	for _, svc := range deps.Services {
+		// Check sync dependencies
+		for _, dep := range svc.Dependencies.Sync {
+			if !diagram.HasNodeWithLabel(dep.Name) {
+				missing = append(missing, fmt.Sprintf("%s > %s (sync)", svc.Name, dep.Name))
+			}
 		}
-	}
 
-	// Check async dependencies
-	for _, dep := range deps.Dependencies.Async {
-		if !diagram.HasNodeWithLabel(dep.Name) {
-			missing = append(missing, fmt.Sprintf("%s (kafka)", dep.Name))
+		// Check async dependencies
+		for _, dep := range svc.Dependencies.Async {
+			if !diagram.HasNodeWithLabel(dep.Name) {
+				missing = append(missing, fmt.Sprintf("%s > %s (kafka)", svc.Name, dep.Name))
+			}
 		}
-	}
 
-	// Check external systems
-	for _, ext := range deps.External {
-		if !diagram.HasNodeWithLabel(ext.Name) {
-			missing = append(missing, fmt.Sprintf("%s (external)", ext.Name))
+		// Check databases
+		for _, db := range svc.Databases {
+			if !diagram.HasNodeWithLabel(db.Name) {
+				missing = append(missing, fmt.Sprintf("%s > %s (database)", svc.Name, db.Name))
+			}
 		}
-	}
 
-	// Check caches
-	for _, cache := range deps.Caches {
-		if !diagram.HasNodeWithLabel(cache.Name) {
-			missing = append(missing, fmt.Sprintf("%s (cache)", cache.Name))
+		// Check caches
+		for _, cache := range svc.Caches {
+			if !diagram.HasNodeWithLabel(cache.Name) {
+				missing = append(missing, fmt.Sprintf("%s > %s (cache)", svc.Name, cache.Name))
+			}
+		}
+
+		// Check external systems
+		for _, ext := range svc.External {
+			if !diagram.HasNodeWithLabel(ext.Name) {
+				missing = append(missing, fmt.Sprintf("%s > %s (external)", svc.Name, ext.Name))
+			}
+		}
+
+		// Check internal steps (if present)
+		for _, step := range svc.InternalSteps {
+			if !diagram.HasNodeWithLabel(step.Name) {
+				missing = append(missing, fmt.Sprintf("%s > %s (internal step)", svc.Name, step.Name))
+			}
 		}
 	}
 

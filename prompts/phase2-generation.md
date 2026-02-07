@@ -2,37 +2,38 @@
 
 ## Objective
 
-Generate a professional Mermaid diagram from `dependencies.yaml`.
+Generate a professional Mermaid diagram from `.flow-deps.yaml`.
 
-**CRITICAL: In this phase, you read ONLY the dependencies.yaml file. Do NOT read the codebase.**
+**CRITICAL: In this phase, you read ONLY the .flow-deps.yaml file. Do NOT read the codebase.**
 
 ## Input
 
-- `.flow-deps.yaml` from Phase 1 (in working directory)
+- `.flow-deps.yaml` from Phase 1 (in working directory, `services[]` format)
 
 ## Output
 
 - `{output}.md` - Mermaid diagram with metadata (default: `flow-diagram.md`)
 
+---
+
 ## Process
 
 ### Step 1: Read Dependencies File
 
-Read `{output_dir}/dependencies.yaml` and parse:
-- Service metadata
-- All sync dependencies
-- All async dependencies
-- External systems
-- Databases and caches
+Read `.flow-deps.yaml` and parse:
+- All services in the `services[]` array
+- Each service's sync/async dependencies, databases, caches, external systems
+- Internal steps (if present)
 
 ### Step 2: Plan the Diagram Layout
 
-Based on dependencies, plan node placement (top-down hierarchy):
+**Flow direction: Always `flowchart TD` (top-down).**
 
+For **single-service** diagrams:
 ```
                     TOP
                      ↓
-            [Entry Points/Callers]
+            [Entry Points]
                      ↓
              [Target Service]
                      ↓
@@ -45,110 +46,35 @@ Based on dependencies, plan node placement (top-down hierarchy):
                    BOTTOM
 ```
 
-Group nodes:
-1. **Entry Points** - How traffic enters (callers, API gateway) - TOP
-2. **Target Service** - The service being documented (handlers, processors)
-3. **Dependent Services** - Services this one calls synchronously
-4. **Message Bus** - Kafka topics (can be at same level as data stores)
-5. **Data Stores** - Databases, caches
-6. **External Systems** - Third-party APIs - BOTTOM
+For **multi-service** diagrams:
+- Each service becomes its own subgraph
+- Use node ID prefixes (`S1_`, `S2_`, `S3_`) to avoid collisions
+- Inter-service edges: if Service A depends on "Payment Service" and there's a Service B named "Payment Service", draw an edge between them
+- Shared infrastructure (Kafka topics used by multiple services, shared DBs) → shared subgraph outside any service
+- Maximum 3 services per diagram — suggest splitting if more
+
+For **pipeline/journey** diagrams:
+- Start at TOP, end at BOTTOM
+- Add explicit markers: `START([Start: Request Received])` and `END([End: Response Sent])`
+- Use dedicated classDef: `classDef startEnd fill:#d4edda,stroke:#28a745,color:#155724,stroke-width:2px`
+- Verify visual reading order matches logical flow: top → bottom
+- Never place entry point below its downstream dependencies
 
 ### Step 3: Generate Mermaid Code
 
 Follow the style guide in `styles/diagram-styles.yaml` EXACTLY.
 
-#### Mermaid Structure
+#### Style Definitions (REQUIRED)
 
-```mermaid
-flowchart TD
-    %% ========================================
-    %% Style Definitions (REQUIRED)
-    %% ========================================
-    classDef service fill:#a5d8ff,stroke:#339af0,color:#1864ab
-    classDef entry fill:#b2f2bb,stroke:#51cf66,color:#2b8a3e
-    classDef kafka fill:#96f2d7,stroke:#38d9a9,color:#087f5b
-    classDef database fill:#ffec99,stroke:#fcc419,color:#e67700
-    classDef cache fill:#d0bfff,stroke:#9775fa,color:#6741d9
-    classDef external fill:#dee2e6,stroke:#adb5bd,color:#495057
-
-    %% ========================================
-    %% Entry Points (TOP)
-    %% ========================================
-    subgraph entry ["Entry Points"]
-        direction LR
-        E1[gRPC Server]
-        E2[HTTP Server]
-    end
-
-    %% ========================================
-    %% Target Service
-    %% ========================================
-    subgraph target ["Service Name"]
-        T1[Handler]
-        T2[Processor]
-    end
-
-    %% ========================================
-    %% Dependent Services
-    %% Use direction LR to spread horizontally
-    %% ========================================
-    subgraph deps ["Dependencies"]
-        direction LR
-        D1[Payment Service]
-        D2[Inventory Service]
-    end
-
-    %% ========================================
-    %% Message Bus
-    %% ========================================
-    subgraph kafka ["Message Bus"]
-        direction LR
-        K1[(order.created)]
-        K2[(payment.completed)]
-    end
-
-    %% ========================================
-    %% Data Stores
-    %% ========================================
-    subgraph data ["Data Stores"]
-        direction LR
-        DB1[(PostgreSQL)]
-        C1(Redis Cache)
-    end
-
-    %% ========================================
-    %% External Systems (BOTTOM)
-    %% ========================================
-    subgraph ext ["External Systems"]
-        X1[[Stripe API]]
-    end
-
-    %% ========================================
-    %% Connections - Sync (thick arrows)
-    %% ========================================
-    E1 ==>|gRPC| T1
-    T1 --> T2
-    T2 ==>|gRPC: ProcessPayment| D1
-    T2 ==>|SQL| DB1
-    T2 ==>|cache| C1
-    D1 ==>|HTTPS| X1
-
-    %% ========================================
-    %% Connections - Async (dotted arrows)
-    %% ========================================
-    T2 -.->|publish| K1
-    K2 -.->|consume| T1
-
-    %% ========================================
-    %% Apply Styles
-    %% ========================================
-    class E1,E2 entry
-    class T1,T2 service
-    class D1,D2 service
-    class K1,K2 kafka
-    class DB1 database
-    class C1 cache
-    class X1 external
+```
+classDef service fill:#a5d8ff,stroke:#339af0,color:#1864ab
+classDef entry fill:#b2f2bb,stroke:#51cf66,color:#2b8a3e
+classDef kafka fill:#96f2d7,stroke:#38d9a9,color:#087f5b
+classDef database fill:#ffec99,stroke:#fcc419,color:#e67700
+classDef cache fill:#d0bfff,stroke:#9775fa,color:#6741d9
+classDef external fill:#dee2e6,stroke:#adb5bd,color:#495057
+classDef step fill:#e8f4f8,stroke:#4a9ebb,color:#2c5f7c
+classDef startEnd fill:#d4edda,stroke:#28a745,color:#155724,stroke-width:2px
 ```
 
 ### Step 4: Node Naming Rules
@@ -156,17 +82,15 @@ flowchart TD
 | Type | Format | Example |
 |------|--------|---------|
 | Service | Title Case | `Payment Service` |
-| Handler | Title Case | `Order Handler` |
 | Kafka Topic | lowercase.dot | `order.created` |
 | Database | Title Case | `PostgreSQL` |
 | Cache | Title Case | `Redis Cache` |
 | External | Title Case | `Stripe API` |
-| Method | PascalCase | `ProcessPayment` |
+| Internal Step | Title Case | `Validate Request` |
 
 **CRITICAL LABEL RULES:**
-- **NO NEWLINES** - all labels must be single-line
-- **NO ABBREVIATIONS** - use full names always
-- **NO LINE BREAKS** - do not split labels across lines
+- **NO NEWLINES** — all labels must be single-line
+- **NO ABBREVIATIONS** — use full names always
 
 ```
 ❌ WRONG:
@@ -176,8 +100,6 @@ flowchart TD
 ✅ CORRECT:
     A[Commit Stage Write]
 ```
-
-If a label is too long, shorten it - do NOT add newlines.
 
 ### Step 5: Arrow Rules
 
@@ -190,6 +112,7 @@ If a label is too long, shorten it - do NOT add newlines.
 | Kafka produce | `-.->` | `\|publish\|` |
 | Kafka consume | `-.->` | `\|consume\|` |
 | Internal call | `-->` | (no label or `\|internal\|`) |
+| Internal step chain | `-->` | (no label) |
 
 ### Step 6: Subgraph Rules
 
@@ -198,11 +121,73 @@ If a label is too long, shorten it - do NOT add newlines.
 3. **Group by type**: All Kafka topics together, all databases together
 4. **Single service per subgraph** for clarity
 
-### Step 6.5: Layout Strategy - Choose the Right Approach
+---
 
-**IMPORTANT: Evaluate complexity BEFORE drawing. Choose the appropriate layout.**
+## Internal Steps Rendering
 
-#### Option A: Grouped Layout (Default - for moderate complexity)
+When a service has `internal_steps`, show them as connected nodes inside its subgraph.
+
+### When to Include Internal Steps
+
+- **Include** when: single-service diagram, OR user asks for "detailed" diagram
+- **Skip** for multi-service diagrams unless explicitly requested — keeps things clean
+
+### How to Render
+
+Steps are chained with `-->` arrows in order inside the service subgraph:
+
+```mermaid
+subgraph S1 ["Order Service"]
+    direction TB
+    S1_step1[Validate Request] --> S1_step2[Fetch Order Data]
+    S1_step2 --> S1_step3[Process Payment]
+    S1_step3 --> S1_step4[Commit Transaction]
+end
+
+%% External dependency arrows connect FROM the relevant step
+S1_step2 ==> DB1[(PostgreSQL)]
+S1_step3 ==> S2[Payment Service]
+S1_step4 -.-> K1[(order.created)]
+```
+
+**Rules:**
+- Steps use `classDef step` styling
+- External dependency arrows connect FROM the relevant step (not the service box)
+- When no `internal_steps`, service remains a single node (default behavior)
+
+---
+
+## Multi-Service Layout
+
+### Node ID Prefixes
+
+Each service gets a prefix to avoid ID collisions:
+- Service 1: `S1_handler`, `S1_db`, `S1_step1`
+- Service 2: `S2_handler`, `S2_db`, `S2_step1`
+
+### Inter-Service Edges
+
+If Service A has a sync dependency named "Payment Service" and Service B is named "Payment Service", draw:
+```
+S1_handler ==>|gRPC| S2_handler
+```
+
+### Shared Infrastructure
+
+Kafka topics or databases used by multiple services go in a shared subgraph:
+```mermaid
+subgraph shared ["Shared Infrastructure"]
+    direction LR
+    K1[(order.created)]
+    DB1[(PostgreSQL)]
+end
+```
+
+---
+
+## Layout Strategy
+
+### Option A: Grouped Layout (Default — moderate complexity)
 
 Use when: 3-8 dependencies, clear groupings
 
@@ -216,7 +201,6 @@ flowchart TD
         direction LR
         D1[Service A]
         D2[Service B]
-        D3[Service C]
     end
 
     subgraph data ["Data Stores"]
@@ -229,50 +213,39 @@ flowchart TD
     T1 ==> data
 ```
 
-#### Option B: Linear Pipeline (Fallback - for high complexity)
+### Option B: Linear Pipeline (Fallback — high complexity)
 
 **USE THIS when the diagram looks messy or has 8+ dependencies.**
 
 Signs you need linear layout:
 - Arrows would cross each other
 - Too many nodes to fit horizontally
-- Multiple many-to-many relationships
 - The grouped layout looks like spaghetti
 
 ```mermaid
 flowchart TD
     E[API Gateway] ==> T[My Service]
-
     T ==> D1[Auth Service]
     T ==> D2[User Service]
-    T ==> D3[Payment Service]
-    T ==> D4[Notification Service]
-    T ==> D5[Audit Service]
-
     T ==> DB[(PostgreSQL)]
-    T ==> C1(Redis Cache)
-
     T -.-> K1[(events.created)]
     K2[(orders.completed)] -.-> T
 ```
 
-This creates a **hub-and-spoke** pattern:
-- Target service is the hub
-- All dependencies spoke out from it
-- Clean, readable, no crossing arrows
+### Decision Guide
 
-#### Decision Guide
-
-| Dependencies | Kafka Topics | Layout to Use |
-|--------------|--------------|---------------|
+| Dependencies | Kafka Topics | Layout |
+|--------------|--------------|--------|
 | 1-4 | 0-2 | Grouped (Option A) |
 | 5-8 | 2-4 | Grouped with `direction LR` |
 | 8+ | 4+ | **Linear Pipeline (Option B)** |
-| Any | Any with crossing arrows | **Linear Pipeline (Option B)** |
+| Any | Crossing arrows | **Linear Pipeline (Option B)** |
 
 **When in doubt, use Linear Pipeline. Clarity > aesthetics.**
 
-### Step 7: Write Complete Markdown File
+---
+
+## Step 7: Write Complete Markdown File
 
 Use the template from `templates/diagram-template.md`:
 
@@ -281,7 +254,6 @@ Use the template from `templates/diagram-template.md`:
 
 Generated: {timestamp}
 Source: {target_path}
-Dependencies: {output_dir}/dependencies.yaml
 
 ## Diagram
 
@@ -291,11 +263,11 @@ Dependencies: {output_dir}/dependencies.yaml
 
 ## Legend
 
-| Symbol | Meaning | Debug Approach |
-|--------|---------|----------------|
-| `==>` | **Synchronous** (gRPC/HTTP) - caller blocks | Check latency, timeouts, error codes |
-| `-.->` | **Asynchronous** (Kafka) - fire and forget | Check consumer lag, DLQ, offsets |
-| `-->` | Internal call | Check logs, traces |
+| Symbol | Meaning |
+|--------|---------|
+| `==>` | **Synchronous** (gRPC/HTTP) |
+| `-.->` | **Asynchronous** (Kafka) |
+| `-->` | Internal call / step chain |
 
 ### Colors
 
@@ -307,62 +279,48 @@ Dependencies: {output_dir}/dependencies.yaml
 | Yellow | Databases |
 | Purple | Caches |
 | Gray | External Systems |
+| Light Blue | Internal Steps |
 
-## Sync Dependencies
+## Dependencies
 
-| From | To | Type | Method/Endpoint | Timeout | Retry |
-|------|-----|------|-----------------|---------|-------|
-{sync_table}
-
-## Async Dependencies
-
-| Topic | Direction | Consumer Group | DLQ |
-|-------|-----------|----------------|-----|
-{async_table}
-
-## External Systems
-
-| System | Type | Purpose |
-|--------|------|---------|
-{external_table}
+{dependency_tables}
 
 ## Source References
 
 {source_references}
 ```
 
+---
+
 ## Quality Checklist
 
 Before completing Phase 2, verify:
 
-- [ ] All services from dependencies.yaml are in the diagram
+- [ ] All services from .flow-deps.yaml are in the diagram
 - [ ] All Kafka topics are in the diagram
-- [ ] All databases are in the diagram
+- [ ] All databases and caches are in the diagram
 - [ ] All external systems are in the diagram
 - [ ] Sync calls use `==>` arrows
 - [ ] Async calls use `-.->` arrows
 - [ ] All subgraph titles are quoted
-- [ ] classDef styles are applied to all nodes
+- [ ] classDef styles applied to all nodes
 - [ ] No abbreviations in node names
-- [ ] Legend is included
-- [ ] Summary tables are included
+- [ ] Internal steps rendered correctly (if present)
+- [ ] Multi-service node IDs use prefixes (if multiple services)
 
 ## Output
-
-After completing Phase 2, report:
 
 ```
 Phase 2 Complete: Diagram Generation
 
-Output: {output_dir}/diagram.md
+Output: {output}.md
 
 Diagram contains:
 - Services: {count}
 - Kafka topics: {count}
 - Databases: {count}
 - External systems: {count}
-- Sync connections: {count}
-- Async connections: {count}
+- Internal steps: {count}
 
-Proceeding to Phase 3: Refinement
+Proceeding to Phase 3: Validation
 ```
