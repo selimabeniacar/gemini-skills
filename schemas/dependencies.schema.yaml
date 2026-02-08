@@ -37,11 +37,13 @@
 #           source_file: "internal/producer/order_producer.go"
 #           source_line: 22
 #     databases:                                # Peer list (not inside dependencies)
-#       - name: "PostgreSQL"
+#       - name: "Order DB"                      # Logical name (NOT just the technology)
+#         type: "postgresql"                    # Technology type
 #         source_file: "internal/repository/order_repo.go"
 #         source_line: 12
 #     caches:                                   # Peer list (not inside dependencies)
-#       - name: "Redis"
+#       - name: "Order Cache"                   # Logical name (NOT just the technology)
+#         type: "redis"                         # Technology type
 #         purpose: "Order cache"
 #         source_file: "internal/cache/order_cache.go"
 #         source_line: 8
@@ -66,6 +68,8 @@
 # 6. Topics MUST use dot-notation (e.g., "order.completed")
 # 7. Every async dependency MUST specify direction
 # 8. Every sync dependency MUST specify type
+# 9. Database/cache names MUST be logical names (e.g., "Order DB"), NOT just technology (e.g., "PostgreSQL")
+#    Each service has its own database/cache — two services using PostgreSQL are two separate nodes
 
 # ============================================================================
 # FULL EXAMPLE
@@ -109,11 +113,13 @@ example:
             source_file: "internal/consumer/payment_consumer.go"
             source_line: 18
       databases:
-        - name: "PostgreSQL"
+        - name: "Order DB"
+          type: "postgresql"
           source_file: "internal/repository/order_repo.go"
           source_line: 12
       caches:
-        - name: "Redis"
+        - name: "Order Cache"
+          type: "redis"
           purpose: "Order cache for fast reads"
           source_file: "internal/cache/order_cache.go"
           source_line: 8

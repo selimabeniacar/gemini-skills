@@ -65,6 +65,7 @@ type AsyncDep struct {
 // Database represents a database dependency
 type Database struct {
 	Name       string `yaml:"name"`
+	Type       string `yaml:"type"`
 	SourceFile string `yaml:"source_file"`
 	SourceLine int    `yaml:"source_line"`
 }
@@ -80,6 +81,7 @@ type External struct {
 // Cache represents a cache system
 type Cache struct {
 	Name       string `yaml:"name"`
+	Type       string `yaml:"type"`
 	Purpose    string `yaml:"purpose"`
 	SourceFile string `yaml:"source_file"`
 	SourceLine int    `yaml:"source_line"`

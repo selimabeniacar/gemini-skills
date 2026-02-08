@@ -160,6 +160,20 @@ Extract service names, RPC methods, imports.
 
 **Cache** — look for: `redis.NewClient(`, `cache.Get(`, `cache.Set(`
 
+**⚠️ NAMING: Use logical names, NOT technology names.**
+
+Each service has its own database and cache — even if they use the same technology. Two services using PostgreSQL are two separate databases.
+
+```
+❌ WRONG:  name: "PostgreSQL"     — ambiguous, merges into one node
+✅ RIGHT:  name: "Ledger DB"      — unique per service
+           type: "postgresql"
+
+❌ WRONG:  name: "Redis"          — ambiguous
+✅ RIGHT:  name: "Ledger Cache"   — unique per service
+           type: "redis"
+```
+
 #### Step 9: Discover Internal Steps (Optional)
 
 Read handler/entrypoint code to identify major processing stages. These are **optional** — only include when there are clear sequential stages worth showing.
@@ -210,11 +224,13 @@ services:
           source_file: "internal/consumer/order_consumer.go"
           source_line: 27
     databases:
-      - name: "PostgreSQL"
+      - name: "Ledger DB"
+        type: "postgresql"
         source_file: "internal/repository/ledger_repo.go"
         source_line: 12
     caches:
-      - name: "Redis"
+      - name: "Ledger Cache"
+        type: "redis"
         purpose: "Balance cache"
         source_file: "internal/cache/balance_cache.go"
         source_line: 15

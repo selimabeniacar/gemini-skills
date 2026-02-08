@@ -83,8 +83,8 @@ classDef startEnd fill:#d4edda,stroke:#28a745,color:#155724,stroke-width:2px
 |------|--------|---------|
 | Service | Title Case | `Payment Service` |
 | Kafka Topic | lowercase.dot | `order.created` |
-| Database | Title Case | `PostgreSQL` |
-| Cache | Title Case | `Redis Cache` |
+| Database | Title Case | `Ledger DB` |
+| Cache | Title Case | `Ledger Cache` |
 | External | Title Case | `Stripe API` |
 | Internal Step | Title Case | `Validate Request` |
 
@@ -103,16 +103,22 @@ classDef startEnd fill:#d4edda,stroke:#28a745,color:#155724,stroke-width:2px
 
 ### Step 5: Arrow Rules
 
-| Connection Type | Arrow | Label Format |
-|-----------------|-------|--------------|
-| gRPC call | `==>` | `\|gRPC: MethodName\|` |
-| HTTP call | `==>` | `\|HTTP\|` or `\|REST\|` |
-| SQL query | `==>` | `\|SQL\|` |
-| Cache read/write | `==>` | `\|cache\|` |
-| Kafka produce | `-.->` | `\|publish\|` |
-| Kafka consume | `-.->` | `\|consume\|` |
-| Internal call | `-->` | (no label or `\|internal\|`) |
+| Connection Type | Arrow | Label |
+|-----------------|-------|-------|
+| gRPC call | `==>` | `\|MethodName\|` (only if useful) |
+| HTTP call | `==>` | (no label) |
+| Database | `==>` | (no label — the node shape says it all) |
+| Cache | `==>` | (no label) |
+| Kafka produce | `-.->` | (no label — dotted arrow + cylinder = obvious) |
+| Kafka consume | `-.->` | (no label) |
+| Internal call | `-->` | (no label) |
 | Internal step chain | `-->` | (no label) |
+
+**Labels are for information the diagram doesn't already show.** The arrow style (`==>` vs `-.->`) shows sync vs async. The node shape (cylinder, rounded) shows the target type. Don't repeat what's already visible.
+
+Only add a label when it provides specific context:
+- `\|ProcessPayment\|` — tells you which RPC method (useful)
+- `\|SQL\|` on an arrow to a database cylinder — redundant, skip it
 
 ### Step 6: Subgraph Rules
 

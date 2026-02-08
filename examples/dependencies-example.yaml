@@ -48,11 +48,13 @@ services:
           source_file: "internal/producer/balance_producer.go"
           source_line: 22
     databases:
-      - name: "PostgreSQL"
+      - name: "Ledger DB"
+        type: "postgresql"
         source_file: "internal/repository/ledger_repo.go"
         source_line: 12
     caches:
-      - name: "Redis"
+      - name: "Ledger Cache"
+        type: "redis"
         purpose: "Balance cache for fast reads, rate limiting"
         source_file: "internal/cache/balance_cache.go"
         source_line: 15
