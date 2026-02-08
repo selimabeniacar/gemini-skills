@@ -237,6 +237,18 @@ func checkComplexity(diagram *parser.Diagram) []Issue {
 		}
 	}
 
+	// Count nodes with multiple incoming edges (fan-in)
+	fanInCount := 0
+	incoming := make(map[string]int)
+	for _, edge := range diagram.Edges {
+		incoming[edge.To]++
+	}
+	for _, count := range incoming {
+		if count > 3 {
+			fanInCount++
+		}
+	}
+
 	// Detect potential spaghetti patterns
 	isSpaghetti := false
 	reasons := []string{}
@@ -260,6 +272,12 @@ func checkComplexity(diagram *parser.Diagram) []Issue {
 	if fanOutCount > 2 {
 		isSpaghetti = true
 		reasons = append(reasons, fmt.Sprintf("%d nodes with 4+ outgoing edges", fanOutCount))
+	}
+
+	// Rule 3b: Multiple nodes with high fan-in (converging arrows)
+	if fanInCount > 2 {
+		isSpaghetti = true
+		reasons = append(reasons, fmt.Sprintf("%d nodes with 4+ incoming edges", fanInCount))
 	}
 
 	// Rule 4: No clear hub pattern when complex
