@@ -197,12 +197,23 @@ func (d *Diagram) HasNodeWithLabel(label string) bool {
 	return false
 }
 
-// GetOrphanNodes returns nodes with no incoming or outgoing edges
+// GetOrphanNodes returns nodes with no incoming or outgoing edges.
+// A node inside a subgraph is NOT an orphan if its parent subgraph
+// has an incoming or outgoing edge (arrow to subgroup covers all nodes inside).
 func (d *Diagram) GetOrphanNodes() []*Node {
 	connected := make(map[string]bool)
 	for _, edge := range d.Edges {
 		connected[edge.From] = true
 		connected[edge.To] = true
+	}
+
+	// Mark all nodes inside a connected subgraph as connected
+	for _, sg := range d.Subgraphs {
+		if connected[sg.ID] {
+			for _, nodeID := range sg.Nodes {
+				connected[nodeID] = true
+			}
+		}
 	}
 
 	orphans := []*Node{}

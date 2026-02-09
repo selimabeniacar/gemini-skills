@@ -123,9 +123,89 @@ Only add a label when it provides specific context:
 ### Step 6: Subgraph Rules
 
 1. **Always quote titles**: `subgraph id ["Display Name"]`
-2. **Use lowercase IDs**: `subgraph kafka ["Message Bus"]`
-3. **Group by type**: All Kafka topics together, all databases together
-4. **Single service per subgraph** for clarity
+2. **Use lowercase IDs**: `subgraph kafka-in ["Consumed Topics"]`
+3. **Max 4 nodes per subgroup** — if more, split into multiple subgroups stacked vertically
+4. **Arrows go to subgroups, NOT individual nodes** — one arrow to a subgroup covers all nodes inside
+
+### Step 6.5: Grouping Rules — Group by Service Context, NOT by Type
+
+**⛔ DO NOT group all topics together, all databases together, etc.**
+
+Group by what's relevant to the same service and the same direction:
+
+| Group | Contains | Example Title |
+|-------|----------|---------------|
+| Service's consumed topics | Kafka topics this service consumes | `"Consumed Topics"` |
+| Service's produced topics | Kafka topics this service produces | `"Produced Topics"` |
+| Service's sync dependencies | gRPC/HTTP services it calls | `"Dependencies"` |
+| Service's data stores | Its database + cache | `"Data Stores"` |
+| Service's external systems | Third-party APIs it calls | `"External"` |
+
+```
+❌ WRONG — grouping all topics from all services:
+    subgraph topics ["All Kafka Topics"]
+        K1[(order.created)]    %% produced by Order Service
+        K2[(payment.done)]     %% consumed by Order Service
+        K3[(ledger.updated)]   %% produced by Ledger Service
+    end
+
+✅ RIGHT — grouping by service + direction:
+    subgraph order-out ["Order Service: Produced"]
+        K1[(order.created)]
+    end
+    subgraph order-in ["Order Service: Consumed"]
+        K2[(payment.done)]
+    end
+```
+
+### Step 6.6: Subgroup Sizing and Stacking
+
+**Max 4 nodes per subgroup.** If a service has 7 sync dependencies, split into two subgroups stacked vertically:
+
+```mermaid
+%%{init: {"flowchart": {"defaultRenderer": "elk"}} }%%
+flowchart TD
+    subgraph target ["Order Service"]
+        T1[Handler]
+    end
+
+    subgraph deps1 ["Dependencies"]
+        D1[Payment Service]
+        D2[Inventory Service]
+        D3[Auth Service]
+    end
+
+    subgraph deps2 ["Dependencies"]
+        D4[Notification Service]
+        D5[Audit Service]
+    end
+
+    subgraph data ["Data Stores"]
+        DB1[(Order DB)]
+        C1(Order Cache)
+    end
+
+    T1 ==> deps1
+    T1 ==> deps2
+    T1 ==> data
+```
+
+**Key rules:**
+- Subgroups stack vertically (default `TD` flow)
+- **One arrow per subgroup** — NOT one arrow per node inside
+- Nodes inside a subgroup that receives an arrow are NOT orphans
+
+---
+
+## ELK Layout Engine
+
+**Always use ELK** for better automatic layout. Add this directive as the first line of every diagram:
+
+```
+%%{init: {"flowchart": {"defaultRenderer": "elk"}} }%%
+```
+
+ELK (Eclipse Layout Kernel) produces cleaner layouts with less edge crossing than the default dagre renderer. It handles subgraphs and complex connections much better.
 
 ---
 
@@ -143,17 +223,19 @@ When a service has `internal_steps`, show them as connected nodes inside its sub
 Steps are chained with `-->` arrows in order inside the service subgraph:
 
 ```mermaid
-subgraph S1 ["Order Service"]
-    direction TB
-    S1_step1[Validate Request] --> S1_step2[Fetch Order Data]
-    S1_step2 --> S1_step3[Process Payment]
-    S1_step3 --> S1_step4[Commit Transaction]
-end
+%%{init: {"flowchart": {"defaultRenderer": "elk"}} }%%
+flowchart TD
+    subgraph S1 ["Order Service"]
+        direction TB
+        S1_step1[Validate Request] --> S1_step2[Fetch Order Data]
+        S1_step2 --> S1_step3[Process Payment]
+        S1_step3 --> S1_step4[Commit Transaction]
+    end
 
-%% External dependency arrows connect FROM the relevant step
-S1_step2 ==> DB1[(PostgreSQL)]
-S1_step3 ==> S2[Payment Service]
-S1_step4 -.-> K1[(order.created)]
+    %% External dependency arrows connect FROM the relevant step
+    S1_step2 ==> DB1[(Order DB)]
+    S1_step3 ==> S2[Payment Service]
+    S1_step4 -.-> K1[(order.created)]
 ```
 
 **Rules:**
@@ -175,79 +257,12 @@ Each service gets a prefix to avoid ID collisions:
 
 If Service A has a sync dependency named "Payment Service" and Service B is named "Payment Service", draw:
 ```
-S1_handler ==>|gRPC| S2_handler
+S1_handler ==> S2_handler
 ```
 
 ### Shared Infrastructure
 
-Kafka topics or databases used by multiple services go in a shared subgraph:
-```mermaid
-subgraph shared ["Shared Infrastructure"]
-    direction LR
-    K1[(order.created)]
-    DB1[(PostgreSQL)]
-end
-```
-
----
-
-## Layout Strategy
-
-### Option A: Grouped Layout (Default — moderate complexity)
-
-Use when: 3-8 dependencies, clear groupings
-
-```mermaid
-flowchart TD
-    subgraph target ["My Service"]
-        T1[Handler]
-    end
-
-    subgraph deps ["Dependencies"]
-        direction LR
-        D1[Service A]
-        D2[Service B]
-    end
-
-    subgraph data ["Data Stores"]
-        direction LR
-        DB1[(Postgres)]
-        C1(Redis)
-    end
-
-    T1 ==> deps
-    T1 ==> data
-```
-
-### Option B: Linear Pipeline (Fallback — high complexity)
-
-**USE THIS when the diagram looks messy or has 8+ dependencies.**
-
-Signs you need linear layout:
-- Arrows would cross each other
-- Too many nodes to fit horizontally
-- The grouped layout looks like spaghetti
-
-```mermaid
-flowchart TD
-    E[API Gateway] ==> T[My Service]
-    T ==> D1[Auth Service]
-    T ==> D2[User Service]
-    T ==> DB[(PostgreSQL)]
-    T -.-> K1[(events.created)]
-    K2[(orders.completed)] -.-> T
-```
-
-### Decision Guide
-
-| Dependencies | Kafka Topics | Layout |
-|--------------|--------------|--------|
-| 1-4 | 0-2 | Grouped (Option A) |
-| 5-8 | 2-4 | Grouped with `direction LR` |
-| 8+ | 4+ | **Linear Pipeline (Option B)** |
-| Any | Crossing arrows | **Linear Pipeline (Option B)** |
-
-**When in doubt, use Linear Pipeline. Clarity > aesthetics.**
+Only group infrastructure as "shared" if the SAME topic/DB is used by multiple services. Otherwise keep it in the service's own subgroup.
 
 ---
 
@@ -302,17 +317,17 @@ Source: {target_path}
 
 Before completing Phase 2, verify:
 
+- [ ] ELK renderer directive is first line: `%%{init: {"flowchart": {"defaultRenderer": "elk"}} }%%`
 - [ ] All services from .flow-deps.yaml are in the diagram
-- [ ] All Kafka topics are in the diagram
-- [ ] All databases and caches are in the diagram
-- [ ] All external systems are in the diagram
-- [ ] Sync calls use `==>` arrows
-- [ ] Async calls use `-.->` arrows
+- [ ] All Kafka topics, databases, caches, external systems are in the diagram
+- [ ] Sync calls use `==>`, async use `-.->`, internal use `-->`
 - [ ] All subgraph titles are quoted
+- [ ] Max 4 nodes per subgroup — split and stack vertically if more
+- [ ] Arrows go to subgroups, not individual nodes inside them
+- [ ] Grouped by service context (consumed topics, produced topics, deps), NOT by type
+- [ ] No redundant labels on arrows
 - [ ] classDef styles applied to all nodes
-- [ ] No abbreviations in node names
 - [ ] Internal steps rendered correctly (if present)
-- [ ] Multi-service node IDs use prefixes (if multiple services)
 
 ## Output
 
