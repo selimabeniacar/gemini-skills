@@ -10,7 +10,7 @@
 ```mermaid
 flowchart TD
     %% ========================================
-    %% Style Definitions (muted, professional colors)
+    %% Style Definitions
     %% ========================================
     classDef service fill:#a5d8ff,stroke:#339af0,color:#1864ab
     classDef entry fill:#b2f2bb,stroke:#51cf66,color:#2b8a3e
@@ -18,120 +18,99 @@ flowchart TD
     classDef database fill:#ffec99,stroke:#fcc419,color:#e67700
     classDef cache fill:#d0bfff,stroke:#9775fa,color:#6741d9
     classDef external fill:#dee2e6,stroke:#adb5bd,color:#495057
+    classDef step fill:#e8f4f8,stroke:#4a9ebb,color:#2c5f7c
 
     %% ========================================
-    %% Entry Points (Callers)
+    %% Entry Points — the service's own endpoints
     %% ========================================
     subgraph entry ["Entry Points"]
-        direction LR
-        E1[Order Service]
-        E2[Reporting Service]
-        E3[Admin Dashboard]
+        E1([LedgerService])
+        E2([/api/v1/ledger])
     end
 
     %% ========================================
-    %% Ledger Service
+    %% Ledger Service — with internal processing steps
     %% ========================================
     subgraph target ["Ledger Service"]
-        T1[gRPC Server]
-        T2[HTTP Server]
-        T3[Transaction Handler]
-        T4[Balance Handler]
+        direction TB
+        S1_step1[Validate Request] --> S1_step2[Load Account]
+        S1_step2 --> S1_step3[Process Transaction]
+        S1_step3 --> S1_step4[Commit]
     end
 
     %% ========================================
-    %% Dependent Services
+    %% Dependencies — gRPC services Ledger calls
     %% ========================================
     subgraph deps ["Dependencies"]
-        direction LR
         D1[Payment Service]
         D2[Account Service]
-        D3[Audit Service]
     end
 
     %% ========================================
-    %% Message Bus
-    %% ========================================
-    subgraph kafka ["Message Bus"]
-        direction LR
-        K1[(order.completed)]
-        K2[(payment.refunded)]
-        K3[(ledger.transaction.created)]
-        K4[(ledger.balance.updated)]
-    end
-
-    %% ========================================
-    %% Data Stores
+    %% Data Stores — Ledger's own database + cache
+    %% Logical names, NOT technology names
     %% ========================================
     subgraph data ["Data Stores"]
-        direction LR
-        DB1[(PostgreSQL)]
-        C1(Redis Cache)
+        DB1[(Ledger DB)]
+        C1(Ledger Cache)
+    end
+
+    %% ========================================
+    %% Consumed Topics — Kafka topics Ledger consumes
+    %% ========================================
+    subgraph kafka-in ["Consumed Topics"]
+        KI1[(order.completed)]
+        KI2[(payment.refunded)]
+    end
+
+    %% ========================================
+    %% Produced Topics — Kafka topics Ledger produces
+    %% ========================================
+    subgraph kafka-out ["Produced Topics"]
+        KO1[(ledger.transaction.created)]
+        KO2[(ledger.balance.updated)]
     end
 
     %% ========================================
     %% External Systems
     %% ========================================
-    subgraph ext ["External Systems"]
-        X1[[Stripe API]]
+    subgraph ext ["External"]
+        EX1[Stripe API]
+        EX2[Audit Service]
     end
 
     %% ========================================
-    %% Sync Connections (gRPC, HTTP, SQL)
+    %% Arrows — to SUBGROUPS, not individual nodes
+    %% 6 arrows total for 15 nodes
     %% ========================================
-    E1 ==>|gRPC: CreateTransaction| T1
-    E2 ==>|gRPC: ListTransactions| T1
-    E3 ==>|HTTP| T2
-    T1 --> T3
-    T1 --> T4
-    T2 --> T3
-    T3 ==>|gRPC: ProcessPayment| D1
-    T3 ==>|gRPC: GetAccount| D2
-    T3 ==>|gRPC: LogAudit| D3
-    T3 ==>|SQL| DB1
-    T4 ==>|SQL| DB1
-    T4 ==>|cache| C1
-    T2 ==>|HTTPS| X1
-
-    %% ========================================
-    %% Async Connections (Kafka)
-    %% ========================================
-    K1 -.->|consume| T3
-    K2 -.->|consume| T3
-    T3 -.->|publish| K3
-    T4 -.->|publish| K4
+    entry ==> target
+    kafka-in -.-> target
+    S1_step2 ==> data
+    S1_step3 ==> deps
+    S1_step4 -.-> kafka-out
+    S1_step4 ==> ext
 
     %% ========================================
     %% Apply Styles
     %% ========================================
-    class E1,E2,E3 entry
-    class T1,T2,T3,T4 service
-    class D1,D2,D3 service
-    class K1,K2,K3,K4 kafka
+    class E1,E2 entry
+    class S1_step1,S1_step2,S1_step3,S1_step4 step
+    class D1,D2 service
     class DB1 database
     class C1 cache
-    class X1 external
+    class KI1,KI2,KO1,KO2 kafka
+    class EX1,EX2 external
 ```
 
 ---
 
 ## Legend
 
-| Symbol | Meaning | Debug Approach |
-|--------|---------|----------------|
-| `==>` | **Synchronous** (gRPC/HTTP) - caller blocks | Check latency, timeouts, error codes |
-| `-.->` | **Asynchronous** (Kafka) - fire and forget | Check consumer lag, DLQ, offsets |
-| `-->` | Internal call | Check logs, traces |
-
-### Node Shapes
-
-| Shape | Meaning |
-|-------|---------|
-| `[Rectangle]` | Service, Handler |
-| `[(Cylinder)]` | Database, Kafka Topic |
-| `([Stadium])` | Consumer Group |
-| `[[Double Rect]]` | External System |
-| `(Rounded)` | Cache |
+| Symbol | Meaning |
+|--------|---------|
+| `==>` | **Synchronous** (gRPC/HTTP) |
+| `-.->` | **Asynchronous** (Kafka) |
+| `-->` | Internal call / step chain |
 
 ### Colors
 
@@ -143,48 +122,45 @@ flowchart TD
 | Yellow | Databases |
 | Purple | Caches |
 | Gray | External Systems |
+| Light Blue | Internal Steps |
 
 ---
 
 ## Sync Dependencies
 
-| From | To | Type | Method/Endpoint | Timeout | Retry | Source |
-|------|-----|------|-----------------|---------|-------|--------|
-| Ledger Service | Payment Service | gRPC | ProcessPayment, RefundPayment | 5s | Yes | internal/client/payment_client.go:45 |
-| Ledger Service | Account Service | gRPC | GetAccount, ValidateAccount | 3s | Yes | internal/client/account_client.go:32 |
-| Ledger Service | Audit Service | gRPC | LogAudit | - | - | internal/audit/client.go:18 |
-| Ledger Service | PostgreSQL | SQL | read/write | - | - | internal/repository/ledger_repo.go:12 |
-| Ledger Service | Redis | cache | read/write | - | - | internal/cache/balance_cache.go:15 |
-| Ledger Service | Stripe API | HTTPS | webhook verify | - | - | internal/webhook/stripe_handler.go:56 |
+| From | To | Type | Source |
+|------|-----|------|--------|
+| Ledger Service | Payment Service | gRPC | internal/client/payment_client.go:45 |
+| Ledger Service | Account Service | gRPC | internal/client/account_client.go:32 |
 
 ---
 
 ## Async Dependencies
 
-| Topic | Direction | Consumer Group | DLQ | Source |
-|-------|-----------|----------------|-----|--------|
-| order.completed | consume | ledger-order-consumer | Yes | internal/consumer/order_consumer.go:27 |
-| payment.refunded | consume | ledger-refund-consumer | Yes | internal/consumer/refund_consumer.go:15 |
-| ledger.transaction.created | produce | - | - | internal/producer/transaction_producer.go:34 |
-| ledger.balance.updated | produce | - | - | internal/producer/balance_producer.go:22 |
-
----
-
-## External Systems
-
-| System | Type | Purpose | Source |
-|--------|------|---------|--------|
-| Stripe API | HTTPS | Payment webhook verification | internal/webhook/stripe_handler.go:56 |
-| Audit Service | gRPC | Compliance logging | internal/audit/client.go:18 |
+| Topic | Direction | Source |
+|-------|-----------|--------|
+| order.completed | consume | internal/consumer/order_consumer.go:27 |
+| payment.refunded | consume | internal/consumer/refund_consumer.go:15 |
+| ledger.transaction.created | produce | internal/producer/transaction_producer.go:34 |
+| ledger.balance.updated | produce | internal/producer/balance_producer.go:22 |
 
 ---
 
 ## Data Stores
 
-| Store | Type | Operations | Source |
-|-------|------|------------|--------|
-| PostgreSQL | Database | read/write | internal/repository/ledger_repo.go:12 |
-| Redis | Cache | Balance cache | internal/cache/balance_cache.go:15 |
+| Store | Type | Source |
+|-------|------|--------|
+| Ledger DB | postgresql | internal/repository/ledger_repo.go:12 |
+| Ledger Cache | redis | internal/cache/balance_cache.go:15 |
+
+---
+
+## External Systems
+
+| System | Type | Source |
+|--------|------|--------|
+| Stripe API | https | internal/webhook/stripe_handler.go:56 |
+| Audit Service | grpc | internal/audit/client.go:18 |
 
 ---
 
@@ -202,23 +178,15 @@ All dependencies traced from:
 - `internal/cache/balance_cache.go:15` - Redis cache client
 - `internal/webhook/stripe_handler.go:56` - Stripe webhook handler
 - `internal/audit/client.go:18` - Audit service client
-- `services/ledger/docs/RUNBOOK.md` - Service runbook
 
 ---
 
 ## Render Commands
 
-Generate PNG - high resolution (recommended for documentation):
 ```bash
-npx -p @mermaid-js/mermaid-cli mmdc -i diagram.md -o diagram.png -b white -w 3840 -s 2
-```
+# PNG - high resolution (for documentation)
+npx -p @mermaid-js/mermaid-cli mmdc -i flow-diagram.md -o flow-diagram.png -b white -w 3840 -s 2
 
-Generate SVG (for web, scalable):
-```bash
-npx -p @mermaid-js/mermaid-cli mmdc -i diagram.md -o diagram.svg -b white
-```
-
-Generate PDF:
-```bash
-npx -p @mermaid-js/mermaid-cli mmdc -i diagram.md -o diagram.pdf -b white
+# SVG (for web, scalable)
+npx -p @mermaid-js/mermaid-cli mmdc -i flow-diagram.md -o flow-diagram.svg -b white
 ```
